@@ -1,6 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  calculateRelationshipScore,
+  calculateRecommendationScore,
+  compressTierScore,
+  type RecommendationWeights,
+} from "@/lib/recommendation-score";
 
 const POSITIONS = ["对抗路", "打野", "中路", "发育路", "游走"] as const;
 type Position = (typeof POSITIONS)[number];
@@ -62,14 +68,23 @@ type MatchEvidence = {
   sameLane: boolean;
 };
 
+type SynergyEvidence = {
+  ally: string;
+  value: number;
+  matches: number;
+};
+
 type Recommendation = {
   hero: Hero;
   score: number;
   matchupScore: number;
   tierScore: number;
+  rawTierScore: number;
   synergyScore: number;
+  weights: RecommendationWeights;
   confidence: "高" | "中" | "低";
   evidence: MatchEvidence[];
+  synergyEvidence: SynergyEvidence[];
   reasons: string[];
   risk: string;
 };
@@ -372,26 +387,36 @@ function RecommendationCard({
       </div>
       <div className="score-breakdown">
         <div className="metric-row">
-          <span>阵容关系</span>
+          <span>对敌克制</span>
           <span className="metric-track"><i style={{ width: `${recommendation.matchupScore}%` }} /></span>
           <strong>{recommendation.matchupScore}</strong>
         </div>
+        <div className="metric-row metric-row--synergy">
+          <span>队友配合</span>
+          <span className="metric-track"><i style={{ width: `${recommendation.synergyScore}%` }} /></span>
+          <strong>{recommendation.synergyScore}</strong>
+        </div>
         <div className="metric-row metric-row--tier">
-          <span>英雄梯度</span>
+          <span>压缩梯度</span>
           <span className="metric-track"><i style={{ width: `${recommendation.tierScore}%` }} /></span>
           <strong>{recommendation.tierScore}</strong>
         </div>
       </div>
       <ul className="reason-list">
-        {recommendation.reasons.slice(0, 2).map((reason) => <li key={reason}>{reason}</li>)}
+        {recommendation.reasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}
       </ul>
       <div className="card-footer">
         <details>
           <summary>查看依据</summary>
           <div className="evidence-popover">
-            <div><span>计算权重</span><strong>阵容关系 62% · 英雄梯度 38%</strong></div>
+            <div>
+              <span>本次权重</span>
+              <strong>
+                克制 {Math.round(recommendation.weights.counter * 100)}% · 配合 {Math.round(recommendation.weights.synergy * 100)}% · 梯度 {Math.round(recommendation.weights.tier * 100)}%
+              </strong>
+            </div>
             <div><span>可信度</span><strong>{recommendation.confidence}</strong></div>
-            <div><span>阵容协同</span><strong>{recommendation.synergyScore} 分</strong></div>
+            <div><span>原始梯度</span><strong>{recommendation.rawTierScore} → 压缩为 {recommendation.tierScore}</strong></div>
             <p>{recommendation.risk}</p>
           </div>
         </details>
@@ -492,40 +517,43 @@ export function BpAssistant() {
     const enemyEntries = POSITIONS.map((position) => ({ position, hero: enemy[position] })).filter(
       (entry): entry is { position: Position; hero: Hero } => Boolean(entry.hero),
     );
-    const allyHeroes = POSITIONS.map((position) => ally[position]).filter((hero): hero is Hero => Boolean(hero));
+    const allyHeroes = POSITIONS
+      .filter((position) => position !== target)
+      .map((position) => ally[position])
+      .filter((hero): hero is Hero => Boolean(hero));
 
     return heroes
       .filter((hero) => hasPosition(hero, target) && !excluded.has(hero.name))
       .map((hero): Recommendation => {
         const evidence: MatchEvidence[] = [];
-        let weightedMatchup = 0;
-        let relationWeight = 0;
+        const matchupRelations: Array<{ value: number; weight: number }> = [];
 
         enemyEntries.forEach(({ position, hero: opposingHero }) => {
           const analysis = analyses[opposingHero.id];
           if (!analysis) return;
           const sameLane = position === target;
-          const weight = sameLane ? 1.3 : 0.72;
+          const weight = sameLane ? 1.15 : 0.9;
           const favorable = analysis.counteredBy.find((item) => item.heroName === hero.name);
           const unfavorable = analysis.counters.find((item) => item.heroName === hero.name);
           const relation = favorable || unfavorable;
-          if (!relation) return;
+          if (!relation) {
+            matchupRelations.push({ value: 0, weight });
+            return;
+          }
           const value = favorable
             ? Math.abs(favorable.advantageIndex ?? 0)
             : -Math.abs(unfavorable?.advantageIndex ?? 0);
-          weightedMatchup += value * weight;
-          relationWeight += weight;
+          matchupRelations.push({ value, weight });
           evidence.push({ enemy: opposingHero.name, value, matches: relation.totalMatches, sameLane });
         });
 
-        const averageAdvantage = relationWeight ? weightedMatchup / relationWeight : 0;
-        const matchupScore = Math.round(clamp(50 + averageAdvantage * 4, 8, 94));
-        const rawTier = hero.tierScore ?? tierFallback(hero.tier);
-        const heroTierScore = Math.round(clamp(rawTier));
+        const matchupScore = Math.round(clamp(calculateRelationshipScore(matchupRelations, 4), 8, 94));
+        const rawTierScore = Math.round(clamp(hero.tierScore ?? tierFallback(hero.tier)));
+        const heroTierScore = compressTierScore(rawTierScore);
 
-        let synergyTotal = 0;
-        let synergyCount = 0;
         let strongestSynergy: { ally: string; value: number } | null = null;
+        const synergyEvidence: SynergyEvidence[] = [];
+        const synergyRelations: Array<{ value: number }> = [];
         for (const allyHero of allyHeroes) {
           const analysis = analyses[allyHero.id];
           if (!analysis) continue;
@@ -533,28 +561,28 @@ export function BpAssistant() {
           const bad = analysis.badSynergies.find((item) => item.heroName === hero.name);
           if (good) {
             const value = Math.abs(good.synergyIndex ?? 0);
-            synergyTotal += value;
-            synergyCount += 1;
+            synergyRelations.push({ value });
+            synergyEvidence.push({ ally: allyHero.name, value, matches: good.totalMatches });
             if (!strongestSynergy || Math.abs(value) > Math.abs(strongestSynergy.value)) strongestSynergy = { ally: allyHero.name, value };
           } else if (bad) {
             const value = -Math.abs(bad.synergyIndex ?? 0);
-            synergyTotal += value;
-            synergyCount += 1;
+            synergyRelations.push({ value });
+            synergyEvidence.push({ ally: allyHero.name, value, matches: bad.totalMatches });
             if (!strongestSynergy || Math.abs(value) > Math.abs(strongestSynergy.value)) strongestSynergy = { ally: allyHero.name, value };
+          } else {
+            synergyRelations.push({ value: 0 });
           }
         }
-        const synergyScore = Math.round(clamp(50 + (synergyCount ? synergyTotal / synergyCount : 0) * 3.2, 15, 90));
-        const relationshipScore = Math.round(
-          enemyEntries.length && allyHeroes.length
-            ? matchupScore * 0.74 + synergyScore * 0.26
-            : enemyEntries.length
-              ? matchupScore
-              : allyHeroes.length
-                ? synergyScore
-                : 50,
-        );
-        const score = Math.round(relationshipScore * 0.62 + heroTierScore * 0.38);
-        const sampleTotal = evidence.reduce((sum, item) => sum + item.matches, 0);
+        const synergyScore = Math.round(clamp(calculateRelationshipScore(synergyRelations, 4.2), 12, 92));
+        const { score, weights } = calculateRecommendationScore({
+          counterScore: matchupScore,
+          synergyScore,
+          tierScore: heroTierScore,
+          enemyCount: enemyEntries.length,
+          allyCount: allyHeroes.length,
+        });
+        const sampleTotal = evidence.reduce((sum, item) => sum + item.matches, 0)
+          + synergyEvidence.reduce((sum, item) => sum + item.matches, 0);
         const confidence: Recommendation["confidence"] = sampleTotal >= 800
           ? "高"
           : sampleTotal >= 180 || evidence.length >= 2
@@ -562,37 +590,47 @@ export function BpAssistant() {
             : "低";
 
         const strongest = [...evidence].sort((a, b) => Math.abs(b.value) - Math.abs(a.value))[0];
+        const favorableCount = evidence.filter((item) => item.value > 0).length;
+        const positiveSynergyCount = synergyEvidence.filter((item) => item.value > 0).length;
         const reasons: string[] = [];
         if (strongest?.value > 0) {
-          reasons.push(`${strongest.sameLane ? "同路对位" : "阵容交锋"}压制 ${strongest.enemy}，优势指数 +${strongest.value.toFixed(2)}`);
+          reasons.push(`对 ${favorableCount}/${matchupRelations.length} 名已分析敌人有利；最显著压制 ${strongest.enemy} +${strongest.value.toFixed(2)}`);
         } else if (strongest?.value < 0) {
           reasons.push(`对 ${strongest.enemy} 略处下风，已由英雄梯度补偿`);
         } else {
-          reasons.push(enemyEntries.some((item) => item.position === target) ? "该对位暂无显著克制差异" : "尚未录入同路对手，对位按中性值计算");
+          reasons.push(enemyEntries.length ? "对敌方已选阵容暂无显著克制差异" : "尚未录入敌方英雄，克制项不计权重");
         }
-        reasons.push(`${target}当前 ${hero.tier || "未分级"}，梯度分 ${heroTierScore}`);
-        if (strongestSynergy && strongestSynergy.value > 0) reasons.push(`与我方 ${strongestSynergy.ally} 配合指数 +${strongestSynergy.value.toFixed(2)}`);
+        if (strongestSynergy && strongestSynergy.value > 0) reasons.push(`与 ${positiveSynergyCount}/${synergyRelations.length} 名已分析队友有正向组合；${strongestSynergy.ally} +${strongestSynergy.value.toFixed(2)}`);
         if (strongestSynergy && strongestSynergy.value < 0) reasons.push(`与我方 ${strongestSynergy.ally} 的组合样本偏弱`);
+        if (!strongestSynergy) reasons.push(allyHeroes.length ? "与已选队友暂无显著正负组合，配合按中性值计算" : "尚未录入队友，配合项不计权重");
+        reasons.push(`${target} ${hero.tier || "未分级"}：原梯度 ${rawTierScore}，压缩后 ${heroTierScore}`);
 
         const risk = matchupScore < 44
           ? "风险：对位数据偏弱，建议结合熟练度谨慎选择。"
+          : synergyScore < 44
+            ? "风险：与现有队友的组合样本偏弱，建议优先确认阵容联动。"
           : confidence === "低"
-            ? "提示：显著关系样本较少，本项主要由实时梯度支撑。"
+            ? "提示：显著关系样本较少，关系项暂按中性值计算。"
             : "提示：推荐分代表当前数据适配度，不等同于对局胜率。";
 
         return {
           hero,
           score,
-          matchupScore: relationshipScore,
+          matchupScore,
           tierScore: heroTierScore,
+          rawTierScore,
           synergyScore,
+          weights,
           confidence,
           evidence,
+          synergyEvidence,
           reasons,
           risk,
         };
       })
-      .sort((a, b) => b.score - a.score || b.tierScore - a.tierScore)
+      .sort((a, b) => b.score - a.score
+        || (b.matchupScore + b.synergyScore) - (a.matchupScore + a.synergyScore)
+        || b.tierScore - a.tierScore)
       .slice(0, 5);
   }, [heroes, target, selectedNames, ally, enemy, analyses]);
 
@@ -665,8 +703,9 @@ export function BpAssistant() {
         </div>
         <div className="intro-stats" aria-label="数据能力">
           <div><strong>{heroes.length || "—"}</strong><span>英雄实时覆盖</span></div>
-          <div><strong>62<small>%</small></strong><span>阵容关系权重</span></div>
-          <div><strong>38<small>%</small></strong><span>梯度权重</span></div>
+          <div><strong>50<small>%</small></strong><span>对敌克制权重</span></div>
+          <div><strong>30<small>%</small></strong><span>队友配合权重</span></div>
+          <div><strong>20<small>%</small></strong><span>压缩梯度权重</span></div>
         </div>
       </section>
 
@@ -708,7 +747,7 @@ export function BpAssistant() {
             <div className="team-divider"><span>VS</span></div>
 
             <div className="team-block team-block--enemy">
-              <div className="team-label"><span className="team-dot" /><strong>敌方已选</strong><small>同路英雄影响最大</small></div>
+              <div className="team-label"><span className="team-dot" /><strong>敌方已选</strong><small>敌方全阵容均参与</small></div>
               <div className="lineup-list">
                 {POSITIONS.map((position) => (
                   <LineupSlot
@@ -747,7 +786,7 @@ export function BpAssistant() {
                 <h2>{ally[target] ? `替换 ${ally[target]?.name} 的候选` : `${target}补位推荐`}</h2>
                 <p>{enemy[target] ? `重点计算与 ${enemy[target]?.name} 的同路对位，并覆盖敌方其余阵容` : `综合敌方全阵容克制与我方配合${Object.values(enemy).some(Boolean) ? "" : "，补充敌方后会更准确"}`}</p>
               </div>
-              <div className="method-tag"><span>双因子</span><strong>关系 × 梯度</strong></div>
+              <div className="method-tag"><span>三因子</span><strong>克制 × 配合 × 梯度</strong></div>
             </header>
 
             {(metaLoading || (recommendLoading && !recommendations.length)) && (
@@ -775,10 +814,10 @@ export function BpAssistant() {
               <div className="result-empty"><span>◇</span><h3>暂无可用候选</h3><p>该位置的英雄可能已经全部出现在双方阵容中，请移除部分选择后重试。</p></div>
             )}
 
-            {analysisError && <p className="inline-warning">部分克制关系暂未同步，当前结果以英雄梯度为主：{analysisError}</p>}
+            {analysisError && <p className="inline-warning">部分关系暂未同步，缺失项会自动按中性值处理并降低影响：{analysisError}</p>}
             <footer className="result-note">
               <span>i</span>
-              <p>推荐分由“敌方全阵容克制 + 我方英雄配合”组成的关系分与英雄梯度共同计算，不等同于胜率；熟练度仍会影响实战。</p>
+              <p>双方阵容均已录入时：对敌克制 50% + 队友配合 30% + 压缩梯度 20%；输入不完整时会自动重分配权重。推荐分不等同于胜率。</p>
             </footer>
           </section>
         </section>

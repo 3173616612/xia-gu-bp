@@ -976,6 +976,14 @@ summary:focus-visible {
   background: linear-gradient(90deg, #8770df, #b498ff);
 }
 
+.metric-row--synergy .metric-track i {
+  background: linear-gradient(90deg, #2b9f9b, #5ce7df);
+}
+
+.metric-row--synergy strong {
+  color: #83e8e1;
+}
+
 .metric-row--tier strong {
   color: #b9a7f3;
 }

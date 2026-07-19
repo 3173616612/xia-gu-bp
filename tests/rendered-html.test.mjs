@@ -42,7 +42,7 @@ test("keeps the live data contract and removes the disposable starter", async ()
 
   assert.equal(socialCard, undefined);
   assert.match(page, /<BpAssistant \/>/);
-  assert.match(assistant, /阵容关系 62% · 英雄梯度 38%/);
+  assert.match(assistant, /对敌克制 50% \+ 队友配合 30% \+ 压缩梯度 20%/);
   assert.match(assistant, /goodSynergies/);
   assert.match(assistant, /counteredBy/);
   assert.match(assistant, /巅峰千强/);
