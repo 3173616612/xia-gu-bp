@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { calculateTacticalFit } from "@/lib/hero-kit-fit";
 import {
-  calculateRelationshipScore,
+  calculateRelationshipBreakdown,
   calculateRecommendationScore,
   compressTierScore,
   type RecommendationWeights,
@@ -81,6 +82,9 @@ type Recommendation = {
   tierScore: number;
   rawTierScore: number;
   synergyScore: number;
+  counterPenalty: number;
+  synergyPenalty: number;
+  tacticalBonus: number;
   weights: RecommendationWeights;
   confidence: "高" | "中" | "低";
   evidence: MatchEvidence[];
@@ -368,6 +372,8 @@ function RecommendationCard({
 }) {
   const { hero } = recommendation;
   const scoreStyle = { "--score": `${recommendation.score * 3.6}deg` } as CSSProperties;
+  const enemyDisadvantages = recommendation.evidence.filter((item) => item.value < 0).length;
+  const teammateConflicts = recommendation.synergyEvidence.filter((item) => item.value < 0).length;
   return (
     <article className={`recommend-card ${rank === 1 ? "recommend-card--first" : ""}`}>
       <div className="recommend-card__rank">{rank === 1 ? "首选" : `0${rank}`}</div>
@@ -387,12 +393,12 @@ function RecommendationCard({
       </div>
       <div className="score-breakdown">
         <div className="metric-row">
-          <span>对敌克制</span>
+          <span>对敌净分</span>
           <span className="metric-track"><i style={{ width: `${recommendation.matchupScore}%` }} /></span>
           <strong>{recommendation.matchupScore}</strong>
         </div>
         <div className="metric-row metric-row--synergy">
-          <span>队友配合</span>
+          <span>配合净分</span>
           <span className="metric-track"><i style={{ width: `${recommendation.synergyScore}%` }} /></span>
           <strong>{recommendation.synergyScore}</strong>
         </div>
@@ -400,6 +406,11 @@ function RecommendationCard({
           <span>压缩梯度</span>
           <span className="metric-track"><i style={{ width: `${recommendation.tierScore}%` }} /></span>
           <strong>{recommendation.tierScore}</strong>
+        </div>
+        <div className="penalty-strip" aria-label="负向关系与机制修正">
+          <span className={recommendation.counterPenalty ? "is-negative" : ""}>敌方劣势 {enemyDisadvantages} 项 · −{recommendation.counterPenalty}</span>
+          <span className={recommendation.synergyPenalty ? "is-negative" : ""}>队友冲突 {teammateConflicts} 项 · −{recommendation.synergyPenalty}</span>
+          {recommendation.tacticalBonus > 0 && <span className="is-positive">机制补正 +{recommendation.tacticalBonus}</span>}
         </div>
       </div>
       <ul className="reason-list">
@@ -417,6 +428,8 @@ function RecommendationCard({
             </div>
             <div><span>可信度</span><strong>{recommendation.confidence}</strong></div>
             <div><span>原始梯度</span><strong>{recommendation.rawTierScore} → 压缩为 {recommendation.tierScore}</strong></div>
+            <div><span>敌方负向</span><strong>{enemyDisadvantages} 项 · 扣 {recommendation.counterPenalty} 分</strong></div>
+            <div><span>队友负向</span><strong>{teammateConflicts} 项 · 扣 {recommendation.synergyPenalty} 分</strong></div>
             <p>{recommendation.risk}</p>
           </div>
         </details>
@@ -547,11 +560,9 @@ export function BpAssistant() {
           evidence.push({ enemy: opposingHero.name, value, matches: relation.totalMatches, sameLane });
         });
 
-        const matchupScore = Math.round(clamp(calculateRelationshipScore(matchupRelations, 4), 8, 94));
         const rawTierScore = Math.round(clamp(hero.tierScore ?? tierFallback(hero.tier)));
         const heroTierScore = compressTierScore(rawTierScore);
 
-        let strongestSynergy: { ally: string; value: number } | null = null;
         const synergyEvidence: SynergyEvidence[] = [];
         const synergyRelations: Array<{ value: number }> = [];
         for (const allyHero of allyHeroes) {
@@ -563,17 +574,19 @@ export function BpAssistant() {
             const value = Math.abs(good.synergyIndex ?? 0);
             synergyRelations.push({ value });
             synergyEvidence.push({ ally: allyHero.name, value, matches: good.totalMatches });
-            if (!strongestSynergy || Math.abs(value) > Math.abs(strongestSynergy.value)) strongestSynergy = { ally: allyHero.name, value };
           } else if (bad) {
             const value = -Math.abs(bad.synergyIndex ?? 0);
             synergyRelations.push({ value });
             synergyEvidence.push({ ally: allyHero.name, value, matches: bad.totalMatches });
-            if (!strongestSynergy || Math.abs(value) > Math.abs(strongestSynergy.value)) strongestSynergy = { ally: allyHero.name, value };
           } else {
             synergyRelations.push({ value: 0 });
           }
         }
-        const synergyScore = Math.round(clamp(calculateRelationshipScore(synergyRelations, 4.2), 12, 92));
+        const matchupBreakdown = calculateRelationshipBreakdown(matchupRelations, 4);
+        const synergyBreakdown = calculateRelationshipBreakdown(synergyRelations, 4.2);
+        const tacticalFit = calculateTacticalFit(hero.name, enemyEntries.map((entry) => entry.hero.name));
+        const matchupScore = Math.round(clamp(matchupBreakdown.score + tacticalFit.bonus, 8, 94));
+        const synergyScore = Math.round(clamp(synergyBreakdown.score, 12, 92));
         const { score, weights } = calculateRecommendationScore({
           counterScore: matchupScore,
           synergyScore,
@@ -589,20 +602,24 @@ export function BpAssistant() {
             ? "中"
             : "低";
 
-        const strongest = [...evidence].sort((a, b) => Math.abs(b.value) - Math.abs(a.value))[0];
-        const favorableCount = evidence.filter((item) => item.value > 0).length;
-        const positiveSynergyCount = synergyEvidence.filter((item) => item.value > 0).length;
+        const favorableEvidence = evidence.filter((item) => item.value > 0);
+        const unfavorableEvidence = evidence.filter((item) => item.value < 0);
+        const positiveSynergies = synergyEvidence.filter((item) => item.value > 0);
+        const negativeSynergies = synergyEvidence.filter((item) => item.value < 0);
+        const worstMatchup = [...unfavorableEvidence].sort((a, b) => a.value - b.value)[0];
+        const worstSynergy = [...negativeSynergies].sort((a, b) => a.value - b.value)[0];
         const reasons: string[] = [];
-        if (strongest?.value > 0) {
-          reasons.push(`对 ${favorableCount}/${matchupRelations.length} 名已分析敌人有利；最显著压制 ${strongest.enemy} +${strongest.value.toFixed(2)}`);
-        } else if (strongest?.value < 0) {
-          reasons.push(`对 ${strongest.enemy} 略处下风，已由英雄梯度补偿`);
+        if (matchupRelations.length) {
+          reasons.push(`敌方：有利 ${favorableEvidence.length}/${matchupRelations.length}，劣势 ${unfavorableEvidence.length}/${matchupRelations.length}${worstMatchup ? `；最差对 ${worstMatchup.enemy} ${worstMatchup.value.toFixed(2)}` : ""}`);
         } else {
-          reasons.push(enemyEntries.length ? "对敌方已选阵容暂无显著克制差异" : "尚未录入敌方英雄，克制项不计权重");
+          reasons.push(enemyEntries.length ? "敌方关系正在同步，当前按中性值计算" : "尚未录入敌方英雄，克制项不计权重");
         }
-        if (strongestSynergy && strongestSynergy.value > 0) reasons.push(`与 ${positiveSynergyCount}/${synergyRelations.length} 名已分析队友有正向组合；${strongestSynergy.ally} +${strongestSynergy.value.toFixed(2)}`);
-        if (strongestSynergy && strongestSynergy.value < 0) reasons.push(`与我方 ${strongestSynergy.ally} 的组合样本偏弱`);
-        if (!strongestSynergy) reasons.push(allyHeroes.length ? "与已选队友暂无显著正负组合，配合按中性值计算" : "尚未录入队友，配合项不计权重");
+        if (synergyRelations.length) {
+          reasons.push(`队友：配合 ${positiveSynergies.length}/${synergyRelations.length}，冲突 ${negativeSynergies.length}/${synergyRelations.length}${worstSynergy ? `；最差与 ${worstSynergy.ally} ${worstSynergy.value.toFixed(2)}` : ""}`);
+        } else {
+          reasons.push(allyHeroes.length ? "队友关系正在同步，当前按中性值计算" : "尚未录入队友，配合项不计权重");
+        }
+        if (tacticalFit.reason) reasons.push(tacticalFit.reason);
         reasons.push(`${target} ${hero.tier || "未分级"}：原梯度 ${rawTierScore}，压缩后 ${heroTierScore}`);
 
         const risk = matchupScore < 44
@@ -620,6 +637,9 @@ export function BpAssistant() {
           tierScore: heroTierScore,
           rawTierScore,
           synergyScore,
+          counterPenalty: matchupBreakdown.negativePenalty,
+          synergyPenalty: synergyBreakdown.negativePenalty,
+          tacticalBonus: tacticalFit.bonus,
           weights,
           confidence,
           evidence,
@@ -817,7 +837,7 @@ export function BpAssistant() {
             {analysisError && <p className="inline-warning">部分关系暂未同步，缺失项会自动按中性值处理并降低影响：{analysisError}</p>}
             <footer className="result-note">
               <span>i</span>
-              <p>双方阵容均已录入时：对敌克制 50% + 队友配合 30% + 压缩梯度 20%；输入不完整时会自动重分配权重。推荐分不等同于胜率。</p>
+              <p>双方阵容均已录入时：对敌克制 50% + 队友配合 30% + 压缩梯度 20%；劣势与冲突单独扣分，高控制阵容会加入团队解控机制补正。</p>
             </footer>
           </section>
         </section>

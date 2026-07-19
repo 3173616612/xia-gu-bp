@@ -988,6 +988,34 @@ summary:focus-visible {
   color: #b9a7f3;
 }
 
+.penalty-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 1px;
+}
+
+.penalty-strip span {
+  padding: 3px 6px;
+  border: 1px solid rgba(151, 169, 207, 0.1);
+  border-radius: 999px;
+  color: var(--muted-2);
+  font-size: 7px;
+  line-height: 1.2;
+}
+
+.penalty-strip span.is-negative {
+  border-color: rgba(255, 102, 125, 0.24);
+  background: rgba(255, 102, 125, 0.08);
+  color: #ff9bad;
+}
+
+.penalty-strip span.is-positive {
+  border-color: rgba(92, 231, 223, 0.24);
+  background: rgba(92, 231, 223, 0.08);
+  color: #83e8e1;
+}
+
 .reason-list {
   display: grid;
   grid-area: reasons;

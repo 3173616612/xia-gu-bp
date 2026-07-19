@@ -11,6 +11,12 @@ export type WeightedRelationship = {
   weight?: number;
 };
 
+export type RelationshipBreakdown = {
+  score: number;
+  positiveBonus: number;
+  negativePenalty: number;
+};
+
 /**
  * The upstream tier score spans almost the full 0-100 range. Compressing it to
  * 40-70 keeps tier meaningful without allowing a T0 label to erase matchup data.
@@ -24,26 +30,47 @@ export function compressTierScore(rawTierScore: number) {
  * neutral (value 0) entry for every analyzed hero without a significant link,
  * so countering one opponent cannot score the same as countering all five.
  */
-export function calculateRelationshipScore(relations: WeightedRelationship[], strengthScale: number) {
-  if (!relations.length) return 50;
+export function calculateRelationshipBreakdown(
+  relations: WeightedRelationship[],
+  strengthScale: number,
+): RelationshipBreakdown {
+  if (!relations.length) return { score: 50, positiveBonus: 0, negativePenalty: 0 };
 
-  let weightedValue = 0;
+  let positiveStrength = 0;
+  let negativeStrength = 0;
   let totalWeight = 0;
   let positiveWeight = 0;
   let negativeWeight = 0;
 
   relations.forEach(({ value, weight = 1 }) => {
     const safeWeight = Math.max(0, weight);
-    weightedValue += value * safeWeight;
     totalWeight += safeWeight;
-    if (value > 0) positiveWeight += safeWeight;
-    if (value < 0) negativeWeight += safeWeight;
+    if (value > 0) {
+      positiveStrength += value * safeWeight;
+      positiveWeight += safeWeight;
+    }
+    if (value < 0) {
+      negativeStrength += Math.abs(value) * safeWeight;
+      negativeWeight += safeWeight;
+    }
   });
 
-  if (!totalWeight) return 50;
-  const averageStrength = weightedValue / totalWeight;
-  const breadth = (positiveWeight - negativeWeight) / totalWeight;
-  return Math.round(clampScore(50 + averageStrength * strengthScale + breadth * 8));
+  if (!totalWeight) return { score: 50, positiveBonus: 0, negativePenalty: 0 };
+
+  const positiveBonus = positiveStrength / totalWeight * strengthScale
+    + positiveWeight / totalWeight * 8;
+  const negativePenalty = negativeStrength / totalWeight * strengthScale * 1.15
+    + negativeWeight / totalWeight * 10;
+
+  return {
+    score: Math.round(clampScore(50 + positiveBonus - negativePenalty)),
+    positiveBonus: Math.round(positiveBonus),
+    negativePenalty: Math.round(negativePenalty),
+  };
+}
+
+export function calculateRelationshipScore(relations: WeightedRelationship[], strengthScale: number) {
+  return calculateRelationshipBreakdown(relations, strengthScale).score;
 }
 
 /** Relationship evidence receives most of the weight whenever the user supplies it. */

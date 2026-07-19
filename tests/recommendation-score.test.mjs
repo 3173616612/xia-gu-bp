@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { calculateTacticalFit } from "../lib/hero-kit-fit.ts";
 import {
+  calculateRelationshipBreakdown,
   calculateRelationshipScore,
   calculateRecommendationScore,
   compressTierScore,
@@ -22,6 +24,68 @@ test("rewards counter breadth across the complete enemy lineup", () => {
   ], 4);
 
   assert.ok(countersFive > countersOne, `${countersFive} should beat ${countersOne}`);
+});
+
+test("enemy disadvantages are explicit penalties below the neutral score", () => {
+  const breakdown = calculateRelationshipBreakdown(
+    Array.from({ length: 5 }, () => ({ value: -2 })),
+    4,
+  );
+
+  assert.ok(breakdown.negativePenalty > 0);
+  assert.equal(breakdown.positiveBonus, 0);
+  assert.ok(breakdown.score < 50);
+});
+
+test("bad teammate pairings materially reduce the recommendation score", () => {
+  const neutralTeam = calculateRecommendationScore({
+    counterScore: 60,
+    synergyScore: 50,
+    tierScore: 55,
+    enemyCount: 5,
+    allyCount: 4,
+  });
+  const badSynergy = calculateRelationshipBreakdown(
+    Array.from({ length: 4 }, () => ({ value: -3 })),
+    4.2,
+  );
+  const conflictingTeam = calculateRecommendationScore({
+    counterScore: 60,
+    synergyScore: badSynergy.score,
+    tierScore: 55,
+    enemyCount: 5,
+    allyCount: 4,
+  });
+
+  assert.ok(badSynergy.negativePenalty > 0);
+  assert.ok(conflictingTeam.score < neutralTeam.score);
+});
+
+test("Zhuang Zhou becomes the first support into the reported control-heavy lineup", () => {
+  const enemyNames = ["关羽", "元流之子(坦克)", "武则天", "后羿", "鲁班大师"];
+  const tacticalFit = calculateTacticalFit("庄周", enemyNames);
+  const zhuangZhouCounterScore = Math.min(94, 54 + tacticalFit.bonus);
+  const zhuangZhou = calculateRecommendationScore({
+    counterScore: zhuangZhouCounterScore,
+    synergyScore: 50,
+    tierScore: compressTierScore(1),
+    enemyCount: 5,
+    allyCount: 0,
+  });
+  const dunShan = calculateRecommendationScore({
+    counterScore: 69,
+    synergyScore: 50,
+    tierScore: compressTierScore(96),
+    enemyCount: 5,
+    allyCount: 0,
+  });
+
+  assert.ok(tacticalFit.bonus >= 28);
+  assert.ok(
+    zhuangZhou.score > dunShan.score
+      || (zhuangZhou.score === dunShan.score && zhuangZhouCounterScore > 69),
+    "Zhuang Zhou should win by total score or the relationship-first tie break",
+  );
 });
 
 test("five-enemy counter evidence can outrank a neutral T0 candidate", () => {

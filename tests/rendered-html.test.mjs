@@ -44,6 +44,8 @@ test("keeps the live data contract and removes the disposable starter", async ()
   assert.match(page, /<BpAssistant \/>/);
   assert.match(assistant, /对敌克制 50% \+ 队友配合 30% \+ 压缩梯度 20%/);
   assert.match(assistant, /goodSynergies/);
+  assert.match(assistant, /counterPenalty/);
+  assert.match(assistant, /calculateTacticalFit/);
   assert.match(assistant, /counteredBy/);
   assert.match(assistant, /巅峰千强/);
   assert.match(layout, /\/og\.png/);
