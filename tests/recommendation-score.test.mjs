@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { calculateTacticalFit } from "../lib/hero-kit-fit.ts";
 import {
   calculateRelationshipBreakdown,
   calculateRelationshipScore,
@@ -59,33 +58,6 @@ test("bad teammate pairings materially reduce the recommendation score", () => {
 
   assert.ok(badSynergy.negativePenalty > 0);
   assert.ok(conflictingTeam.score < neutralTeam.score);
-});
-
-test("Zhuang Zhou becomes the first support into the reported control-heavy lineup", () => {
-  const enemyNames = ["关羽", "元流之子(坦克)", "武则天", "后羿", "鲁班大师"];
-  const tacticalFit = calculateTacticalFit("庄周", enemyNames);
-  const zhuangZhouCounterScore = Math.min(94, 54 + tacticalFit.bonus);
-  const zhuangZhou = calculateRecommendationScore({
-    counterScore: zhuangZhouCounterScore,
-    synergyScore: 50,
-    tierScore: compressTierScore(1),
-    enemyCount: 5,
-    allyCount: 0,
-  });
-  const dunShan = calculateRecommendationScore({
-    counterScore: 69,
-    synergyScore: 50,
-    tierScore: compressTierScore(96),
-    enemyCount: 5,
-    allyCount: 0,
-  });
-
-  assert.ok(tacticalFit.bonus >= 28);
-  assert.ok(
-    zhuangZhou.score > dunShan.score
-      || (zhuangZhou.score === dunShan.score && zhuangZhouCounterScore > 69),
-    "Zhuang Zhou should win by total score or the relationship-first tie break",
-  );
 });
 
 test("five-enemy counter evidence can outrank a neutral T0 candidate", () => {

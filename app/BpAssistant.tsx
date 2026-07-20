@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { calculateTacticalFit } from "@/lib/hero-kit-fit";
 import {
   calculateRelationshipBreakdown,
   calculateRecommendationScore,
@@ -60,7 +59,8 @@ type Lineup = Record<Position, Hero | null>;
 
 type PickerContext =
   | { mode: "lineup"; side: TeamSide; position: Position }
-  | { mode: "counter" };
+  | { mode: "counter" }
+  | { mode: "ban" };
 
 type MatchEvidence = {
   enemy: string;
@@ -84,7 +84,6 @@ type Recommendation = {
   synergyScore: number;
   counterPenalty: number;
   synergyPenalty: number;
-  tacticalBonus: number;
   weights: RecommendationWeights;
   confidence: "高" | "中" | "低";
   evidence: MatchEvidence[];
@@ -212,6 +211,11 @@ function HeroPicker({
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const position = context.mode === "lineup" ? context.position : null;
+  const pickerTitle = context.mode === "lineup"
+    ? `选择${context.position}英雄`
+    : context.mode === "ban"
+      ? "选择已 Ban 英雄"
+      : "查询哪位英雄";
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -243,7 +247,7 @@ function HeroPicker({
         <header className="picker-header">
           <div>
             <p className="eyebrow">英雄池 · {heroes.length} 名</p>
-            <h2 id="picker-title">{position ? `选择${position}英雄` : "查询哪位英雄"}</h2>
+            <h2 id="picker-title">{pickerTitle}</h2>
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="关闭英雄选择器">
             ×
@@ -265,7 +269,7 @@ function HeroPicker({
           )}
         </label>
         <div className="picker-meta">
-          <span>{position ? `已筛选 ${position}` : "全部分路"}</span>
+          <span>{position ? `已筛选 ${position}` : context.mode === "ban" ? "全部英雄 · 选中后加入 BAN 位" : "全部分路"}</span>
           <span>{filtered.length} 个结果</span>
         </div>
         <div className="hero-grid">
@@ -364,11 +368,13 @@ function RecommendationCard({
   rank,
   target,
   onAdd,
+  onBan,
 }: {
   recommendation: Recommendation;
   rank: number;
   target: Position;
   onAdd: () => void;
+  onBan: () => void;
 }) {
   const { hero } = recommendation;
   const scoreStyle = { "--score": `${recommendation.score * 3.6}deg` } as CSSProperties;
@@ -407,10 +413,9 @@ function RecommendationCard({
           <span className="metric-track"><i style={{ width: `${recommendation.tierScore}%` }} /></span>
           <strong>{recommendation.tierScore}</strong>
         </div>
-        <div className="penalty-strip" aria-label="负向关系与机制修正">
+        <div className="penalty-strip" aria-label="负向关系扣分">
           <span className={recommendation.counterPenalty ? "is-negative" : ""}>敌方劣势 {enemyDisadvantages} 项 · −{recommendation.counterPenalty}</span>
           <span className={recommendation.synergyPenalty ? "is-negative" : ""}>队友冲突 {teammateConflicts} 项 · −{recommendation.synergyPenalty}</span>
-          {recommendation.tacticalBonus > 0 && <span className="is-positive">机制补正 +{recommendation.tacticalBonus}</span>}
         </div>
       </div>
       <ul className="reason-list">
@@ -433,7 +438,10 @@ function RecommendationCard({
             <p>{recommendation.risk}</p>
           </div>
         </details>
-        <button type="button" onClick={onAdd}>加入{target}</button>
+        <div className="card-footer-actions">
+          <button type="button" className="card-ban-button" onClick={onBan}>设为已 Ban</button>
+          <button type="button" onClick={onAdd}>加入{target}</button>
+        </div>
       </div>
     </article>
   );
@@ -447,6 +455,7 @@ export function BpAssistant() {
   const [metaError, setMetaError] = useState("");
   const [ally, setAlly] = useState<Lineup>(createEmptyLineup);
   const [enemy, setEnemy] = useState<Lineup>(createEmptyLineup);
+  const [bannedHeroes, setBannedHeroes] = useState<Hero[]>([]);
   const [target, setTarget] = useState<Position>("中路");
   const [picker, setPicker] = useState<PickerContext | null>(null);
   const [counterHero, setCounterHero] = useState<Hero | null>(null);
@@ -478,9 +487,9 @@ export function BpAssistant() {
 
   const selectedNames = useMemo(() => {
     const names = new Set<string>();
-    [...Object.values(ally), ...Object.values(enemy)].forEach((hero) => hero && names.add(hero.name));
+    [...Object.values(ally), ...Object.values(enemy), ...bannedHeroes].forEach((hero) => hero && names.add(hero.name));
     return names;
-  }, [ally, enemy]);
+  }, [ally, enemy, bannedHeroes]);
 
   const selectedIds = useMemo(() => {
     const ids = new Set<number>();
@@ -584,8 +593,7 @@ export function BpAssistant() {
         }
         const matchupBreakdown = calculateRelationshipBreakdown(matchupRelations, 4);
         const synergyBreakdown = calculateRelationshipBreakdown(synergyRelations, 4.2);
-        const tacticalFit = calculateTacticalFit(hero.name, enemyEntries.map((entry) => entry.hero.name));
-        const matchupScore = Math.round(clamp(matchupBreakdown.score + tacticalFit.bonus, 8, 94));
+        const matchupScore = Math.round(clamp(matchupBreakdown.score, 8, 94));
         const synergyScore = Math.round(clamp(synergyBreakdown.score, 12, 92));
         const { score, weights } = calculateRecommendationScore({
           counterScore: matchupScore,
@@ -619,7 +627,6 @@ export function BpAssistant() {
         } else {
           reasons.push(allyHeroes.length ? "队友关系正在同步，当前按中性值计算" : "尚未录入队友，配合项不计权重");
         }
-        if (tacticalFit.reason) reasons.push(tacticalFit.reason);
         reasons.push(`${target} ${hero.tier || "未分级"}：原梯度 ${rawTierScore}，压缩后 ${heroTierScore}`);
 
         const risk = matchupScore < 44
@@ -639,7 +646,6 @@ export function BpAssistant() {
           synergyScore,
           counterPenalty: matchupBreakdown.negativePenalty,
           synergyPenalty: synergyBreakdown.negativePenalty,
-          tacticalBonus: tacticalFit.bonus,
           weights,
           confidence,
           evidence,
@@ -655,7 +661,8 @@ export function BpAssistant() {
   }, [heroes, target, selectedNames, ally, enemy, analyses]);
 
   const pickerCurrentHero = useMemo(() => {
-    if (!picker || picker.mode === "counter") return counterHero;
+    if (!picker || picker.mode === "ban") return null;
+    if (picker.mode === "counter") return counterHero;
     return (picker.side === "ally" ? ally : enemy)[picker.position];
   }, [picker, counterHero, ally, enemy]);
 
@@ -664,6 +671,8 @@ export function BpAssistant() {
     if (picker.mode === "counter") {
       setCounterHero(hero);
       setView("counter");
+    } else if (picker.mode === "ban") {
+      setBannedHeroes((previous) => previous.some((item) => item.id === hero.id) ? previous : [...previous, hero]);
     } else {
       const setter = picker.side === "ally" ? setAlly : setEnemy;
       setter((previous) => ({ ...previous, [picker.position]: hero }));
@@ -672,7 +681,7 @@ export function BpAssistant() {
   };
 
   const clearPickerSlot = () => {
-    if (!picker || picker.mode === "counter") return;
+    if (!picker || picker.mode !== "lineup") return;
     const setter = picker.side === "ally" ? setAlly : setEnemy;
     setter((previous) => ({ ...previous, [picker.position]: null }));
     setPicker(null);
@@ -682,12 +691,14 @@ export function BpAssistant() {
     const find = (name: string) => heroes.find((hero) => hero.name === name) || null;
     setAlly({ 对抗路: find("廉颇"), 打野: find("镜"), 中路: null, 发育路: find("公孙离"), 游走: find("张飞") });
     setEnemy({ 对抗路: find("吕布"), 打野: find("兰陵王"), 中路: find("不知火舞"), 发育路: find("后羿"), 游走: find("朵莉亚") });
+    setBannedHeroes([]);
     setTarget("中路");
   };
 
   const clearLineups = () => {
     setAlly(createEmptyLineup());
     setEnemy(createEmptyLineup());
+    setBannedHeroes([]);
   };
 
   const counterAnalysis = counterHero ? analyses[counterHero.id] : null;
@@ -719,7 +730,7 @@ export function BpAssistant() {
         <div>
           <p className="overline"><span>LIVE META</span> 先看对位，再看梯度</p>
           <h1>别凭感觉补位，<br /><em>让数据替你锁定答案。</em></h1>
-          <p className="intro-copy">录入双方阵容与待补位置，系统会把巅峰千强近 30 天的敌方克制、友方配合和当日英雄梯度合成一份可解释的选将建议。</p>
+          <p className="intro-copy">录入双方阵容、BAN 位与待补位置，系统会把巅峰千强近 30 天的敌方克制、友方配合和当日英雄梯度合成一份可解释的选将建议。</p>
         </div>
         <div className="intro-stats" aria-label="数据能力">
           <div><strong>{heroes.length || "—"}</strong><span>英雄实时覆盖</span></div>
@@ -782,6 +793,31 @@ export function BpAssistant() {
               </div>
             </div>
 
+            <div className="ban-block">
+              <div className="ban-heading">
+                <div><span className="ban-mark">×</span><strong>BAN 位</strong><small>{bannedHeroes.length ? `已禁用 ${bannedHeroes.length} 名` : "可选填"}</small></div>
+                <button type="button" onClick={() => setPicker({ mode: "ban" })}>＋ 添加英雄</button>
+              </div>
+              <div className={`ban-list ${bannedHeroes.length ? "" : "ban-list--empty"}`}>
+                {bannedHeroes.map((hero) => (
+                  <div className="ban-chip" key={`ban-${hero.id}`}>
+                    <HeroAvatar hero={hero} size="sm" />
+                    <span>{hero.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setBannedHeroes((previous) => previous.filter((item) => item.id !== hero.id))}
+                      aria-label={`取消 Ban ${hero.name}`}
+                    >×</button>
+                  </div>
+                ))}
+                {!bannedHeroes.length && (
+                  <button type="button" className="ban-empty-action" onClick={() => setPicker({ mode: "ban" })}>
+                    <span>＋</span>选择已被 Ban 的英雄，推荐会自动跳过
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="position-picker">
               <div className="position-picker__label"><span>待补位置</span><small>{POSITION_HINT[target]}</small></div>
               <div className="position-chips">
@@ -804,7 +840,7 @@ export function BpAssistant() {
               <div>
                 <p className="eyebrow">SMART PICKS · {target}</p>
                 <h2>{ally[target] ? `替换 ${ally[target]?.name} 的候选` : `${target}补位推荐`}</h2>
-                <p>{enemy[target] ? `重点计算与 ${enemy[target]?.name} 的同路对位，并覆盖敌方其余阵容` : `综合敌方全阵容克制与我方配合${Object.values(enemy).some(Boolean) ? "" : "，补充敌方后会更准确"}`}</p>
+                <p>{enemy[target] ? `重点计算与 ${enemy[target]?.name} 的同路对位，并覆盖敌方其余阵容` : `综合敌方全阵容克制与我方配合${Object.values(enemy).some(Boolean) ? "" : "，补充敌方后会更准确"}`}{bannedHeroes.length ? ` · 已排除 ${bannedHeroes.length} 名被 Ban 英雄` : ""}</p>
               </div>
               <div className="method-tag"><span>三因子</span><strong>克制 × 配合 × 梯度</strong></div>
             </header>
@@ -825,19 +861,20 @@ export function BpAssistant() {
                     rank={index + 1}
                     target={target}
                     onAdd={() => setAlly((previous) => ({ ...previous, [target]: recommendation.hero }))}
+                    onBan={() => setBannedHeroes((previous) => previous.some((item) => item.id === recommendation.hero.id) ? previous : [...previous, recommendation.hero])}
                   />
                 ))}
               </div>
             )}
 
             {!metaLoading && !recommendations.length && !metaError && (
-              <div className="result-empty"><span>◇</span><h3>暂无可用候选</h3><p>该位置的英雄可能已经全部出现在双方阵容中，请移除部分选择后重试。</p></div>
+              <div className="result-empty"><span>◇</span><h3>暂无可用候选</h3><p>该位置的英雄可能已经出现在双方阵容或 BAN 位中，请移除部分选择后重试。</p></div>
             )}
 
             {analysisError && <p className="inline-warning">部分关系暂未同步，缺失项会自动按中性值处理并降低影响：{analysisError}</p>}
             <footer className="result-note">
               <span>i</span>
-              <p>双方阵容均已录入时：对敌克制 50% + 队友配合 30% + 压缩梯度 20%；劣势与冲突单独扣分，高控制阵容会加入团队解控机制补正。</p>
+              <p>双方阵容均已录入时：对敌克制 50% + 队友配合 30% + 压缩梯度 20%；正负关系完全来自巅峰千强样本，劣势与冲突单独扣分。</p>
             </footer>
           </section>
         </section>

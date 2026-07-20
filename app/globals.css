@@ -651,6 +651,138 @@ summary:focus-visible {
   letter-spacing: 0.12em;
 }
 
+.ban-block {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.ban-heading,
+.ban-heading > div {
+  display: flex;
+  align-items: center;
+}
+
+.ban-heading {
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ban-heading > div {
+  gap: 7px;
+}
+
+.ban-mark {
+  display: grid;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  border: 1px solid rgba(255, 102, 125, 0.28);
+  border-radius: 5px;
+  background: rgba(255, 102, 125, 0.08);
+  color: #ff8ea2;
+  font-size: 11px;
+}
+
+.ban-heading strong {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.ban-heading small {
+  color: var(--muted-2);
+  font-size: 8px;
+}
+
+.ban-heading > button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 102, 125, 0.2);
+  border-radius: 7px;
+  background: rgba(255, 102, 125, 0.06);
+  color: #d58b98;
+  cursor: pointer;
+  font-size: 8px;
+}
+
+.ban-heading > button:hover,
+.ban-empty-action:hover {
+  border-color: rgba(255, 102, 125, 0.38);
+  color: #ff9bab;
+}
+
+.ban-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.ban-list--empty {
+  display: block;
+}
+
+.ban-chip {
+  display: grid;
+  min-width: 0;
+  min-height: 43px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 102, 125, 0.16);
+  border-radius: 9px;
+  background: rgba(255, 102, 125, 0.035);
+}
+
+.ban-chip .hero-avatar--sm {
+  width: 30px;
+  height: 30px;
+}
+
+.ban-chip > span {
+  overflow: hidden;
+  color: #c6cedf;
+  font-size: 9px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ban-chip > button {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted-2);
+  cursor: pointer;
+}
+
+.ban-chip > button:hover {
+  background: rgba(255, 102, 125, 0.13);
+  color: #ff9bab;
+}
+
+.ban-empty-action {
+  width: 100%;
+  min-height: 42px;
+  border: 1px dashed rgba(255, 102, 125, 0.18);
+  border-radius: 9px;
+  background: rgba(255, 102, 125, 0.025);
+  color: var(--muted-2);
+  cursor: pointer;
+  font-size: 8px;
+}
+
+.ban-empty-action span {
+  margin-right: 5px;
+  color: #d58b98;
+}
+
 .position-picker {
   margin-top: 26px;
   padding-top: 20px;
@@ -1010,12 +1142,6 @@ summary:focus-visible {
   color: #ff9bad;
 }
 
-.penalty-strip span.is-positive {
-  border-color: rgba(92, 231, 223, 0.24);
-  background: rgba(92, 231, 223, 0.08);
-  color: #83e8e1;
-}
-
 .reason-list {
   display: grid;
   grid-area: reasons;
@@ -1117,7 +1243,12 @@ summary:focus-visible {
   line-height: 1.55;
 }
 
-.card-footer > button {
+.card-footer-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.card-footer-actions button {
   min-height: 31px;
   padding: 0 12px;
   border: 1px solid rgba(93, 141, 255, 0.28);
@@ -1129,8 +1260,19 @@ summary:focus-visible {
   font-weight: 700;
 }
 
-.card-footer > button:hover {
+.card-footer-actions button:hover {
   background: rgba(93, 141, 255, 0.18);
+}
+
+.card-footer-actions .card-ban-button {
+  border-color: rgba(255, 102, 125, 0.22);
+  background: rgba(255, 102, 125, 0.06);
+  color: #d997a3;
+}
+
+.card-footer-actions .card-ban-button:hover {
+  background: rgba(255, 102, 125, 0.13);
+  color: #ff9bab;
 }
 
 .recommend-skeleton {
