@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  calculateCounterLiftScore,
   calculateRelationshipBreakdown,
   calculateRelationshipScore,
   calculateRecommendationScore,
@@ -12,6 +13,13 @@ test("compresses the upstream tier range so T0 cannot dominate relationships", (
   assert.equal(compressTierScore(0), 40);
   assert.equal(compressTierScore(50), 55);
   assert.equal(compressTierScore(100), 70);
+});
+
+test("counter lift measures situational strength against the tier baseline", () => {
+  assert.equal(calculateCounterLiftScore(54, 40), 71);
+  assert.equal(calculateCounterLiftScore(69, 69), 50);
+  assert.equal(calculateCounterLiftScore(50, 40), 50);
+  assert.equal(calculateCounterLiftScore(46, 40), 46);
 });
 
 test("rewards counter breadth across the complete enemy lineup", () => {
@@ -38,7 +46,8 @@ test("enemy disadvantages are explicit penalties below the neutral score", () =>
 
 test("bad teammate pairings materially reduce the recommendation score", () => {
   const neutralTeam = calculateRecommendationScore({
-    counterScore: 60,
+    matchupScore: 60,
+    counterLiftScore: 58,
     synergyScore: 50,
     tierScore: 55,
     enemyCount: 5,
@@ -49,7 +58,8 @@ test("bad teammate pairings materially reduce the recommendation score", () => {
     4.2,
   );
   const conflictingTeam = calculateRecommendationScore({
-    counterScore: 60,
+    matchupScore: 60,
+    counterLiftScore: 58,
     synergyScore: badSynergy.score,
     tierScore: 55,
     enemyCount: 5,
@@ -61,35 +71,66 @@ test("bad teammate pairings materially reduce the recommendation score", () => {
 });
 
 test("five-enemy counter evidence can outrank a neutral T0 candidate", () => {
+  const neutralT0Tier = compressTierScore(95);
+  const counterPickTier = compressTierScore(35);
+  const counterPickMatchup = calculateRelationshipScore(Array.from({ length: 5 }, () => ({ value: 2 })), 4);
   const neutralT0 = calculateRecommendationScore({
-    counterScore: 50,
+    matchupScore: 50,
+    counterLiftScore: calculateCounterLiftScore(50, neutralT0Tier),
     synergyScore: 50,
-    tierScore: compressTierScore(95),
+    tierScore: neutralT0Tier,
     enemyCount: 5,
     allyCount: 4,
   });
   const counterPick = calculateRecommendationScore({
-    counterScore: calculateRelationshipScore(Array.from({ length: 5 }, () => ({ value: 2 })), 4),
+    matchupScore: counterPickMatchup,
+    counterLiftScore: calculateCounterLiftScore(counterPickMatchup, counterPickTier),
     synergyScore: 60,
-    tierScore: compressTierScore(35),
+    tierScore: counterPickTier,
     enemyCount: 5,
     allyCount: 4,
   });
 
-  assert.deepEqual(counterPick.weights, { counter: 0.5, synergy: 0.3, tier: 0.2 });
+  assert.deepEqual(counterPick.weights, { counterLift: 0.3, matchup: 0.25, synergy: 0.3, tier: 0.15 });
   assert.ok(counterPick.score > neutralT0.score, `${counterPick.score} should beat ${neutralT0.score}`);
+});
+
+test("the supplied five-enemy example ranks Zhuangzhou above a generic T0 support", () => {
+  const zhuangzhou = calculateRecommendationScore({
+    matchupScore: 54,
+    counterLiftScore: calculateCounterLiftScore(54, 40),
+    synergyScore: 50,
+    tierScore: 40,
+    enemyCount: 5,
+    allyCount: 0,
+  });
+  const genericT0 = calculateRecommendationScore({
+    matchupScore: 69,
+    counterLiftScore: calculateCounterLiftScore(69, 69),
+    synergyScore: 50,
+    tierScore: 69,
+    enemyCount: 5,
+    allyCount: 0,
+  });
+
+  assert.deepEqual(zhuangzhou.weights, { counterLift: 0.55, matchup: 0.3, synergy: 0, tier: 0.15 });
+  assert.equal(zhuangzhou.score, 61);
+  assert.equal(genericT0.score, 59);
+  assert.ok(zhuangzhou.score > genericT0.score);
 });
 
 test("teammate synergy materially changes otherwise equal recommendations", () => {
   const strongFit = calculateRecommendationScore({
-    counterScore: 60,
+    matchupScore: 60,
+    counterLiftScore: 58,
     synergyScore: 80,
     tierScore: 55,
     enemyCount: 5,
     allyCount: 4,
   });
   const weakFit = calculateRecommendationScore({
-    counterScore: 60,
+    matchupScore: 60,
+    counterLiftScore: 58,
     synergyScore: 30,
     tierScore: 55,
     enemyCount: 5,

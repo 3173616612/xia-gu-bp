@@ -1,5 +1,6 @@
 export type RecommendationWeights = {
-  counter: number;
+  counterLift: number;
+  matchup: number;
   synergy: number;
   tier: number;
 };
@@ -23,6 +24,17 @@ export type RelationshipBreakdown = {
  */
 export function compressTierScore(rawTierScore: number) {
   return Math.round(40 + clampScore(rawTierScore) * 0.3);
+}
+
+/**
+ * Measures how much the current enemy lineup improves a hero relative to its
+ * normal meta baseline. This prevents high-tier heroes from receiving the same
+ * strength twice through both tier and matchup inputs.
+ */
+export function calculateCounterLiftScore(matchupScore: number, tierScore: number) {
+  const safeMatchup = clampScore(matchupScore);
+  if (safeMatchup <= 50) return Math.round(safeMatchup);
+  return Math.round(clampScore(50 + (safeMatchup - clampScore(tierScore)) * 1.5));
 }
 
 /**
@@ -75,14 +87,17 @@ export function calculateRelationshipScore(relations: WeightedRelationship[], st
 
 /** Relationship evidence receives most of the weight whenever the user supplies it. */
 export function recommendationWeights(enemyCount: number, allyCount: number): RecommendationWeights {
-  if (enemyCount > 0 && allyCount > 0) return { counter: 0.5, synergy: 0.3, tier: 0.2 };
-  if (enemyCount > 0) return { counter: 0.7, synergy: 0, tier: 0.3 };
-  if (allyCount > 0) return { counter: 0, synergy: 0.6, tier: 0.4 };
-  return { counter: 0, synergy: 0, tier: 1 };
+  if (enemyCount >= 4 && allyCount > 0) return { counterLift: 0.3, matchup: 0.25, synergy: 0.3, tier: 0.15 };
+  if (enemyCount >= 4) return { counterLift: 0.55, matchup: 0.3, synergy: 0, tier: 0.15 };
+  if (enemyCount > 0 && allyCount > 0) return { counterLift: 0.25, matchup: 0.3, synergy: 0.25, tier: 0.2 };
+  if (enemyCount > 0) return { counterLift: 0.35, matchup: 0.4, synergy: 0, tier: 0.25 };
+  if (allyCount > 0) return { counterLift: 0, matchup: 0, synergy: 0.65, tier: 0.35 };
+  return { counterLift: 0, matchup: 0, synergy: 0, tier: 1 };
 }
 
 export function calculateRecommendationScore(input: {
-  counterScore: number;
+  matchupScore: number;
+  counterLiftScore: number;
   synergyScore: number;
   tierScore: number;
   enemyCount: number;
@@ -90,7 +105,8 @@ export function calculateRecommendationScore(input: {
 }) {
   const weights = recommendationWeights(input.enemyCount, input.allyCount);
   const score = Math.round(
-    clampScore(input.counterScore) * weights.counter
+    clampScore(input.counterLiftScore) * weights.counterLift
+      + clampScore(input.matchupScore) * weights.matchup
       + clampScore(input.synergyScore) * weights.synergy
       + clampScore(input.tierScore) * weights.tier,
   );

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
+  calculateCounterLiftScore,
   calculateRelationshipBreakdown,
   calculateRecommendationScore,
   compressTierScore,
@@ -78,6 +79,7 @@ type SynergyEvidence = {
 type Recommendation = {
   hero: Hero;
   score: number;
+  counterLiftScore: number;
   matchupScore: number;
   tierScore: number;
   rawTierScore: number;
@@ -398,6 +400,11 @@ function RecommendationCard({
         <small>推荐分</small>
       </div>
       <div className="score-breakdown">
+        <div className="metric-row metric-row--lift">
+          <span>阵容提升</span>
+          <span className="metric-track"><i style={{ width: `${recommendation.counterLiftScore}%` }} /></span>
+          <strong>{recommendation.counterLiftScore}</strong>
+        </div>
         <div className="metric-row">
           <span>对敌净分</span>
           <span className="metric-track"><i style={{ width: `${recommendation.matchupScore}%` }} /></span>
@@ -428,10 +435,11 @@ function RecommendationCard({
             <div>
               <span>本次权重</span>
               <strong>
-                克制 {Math.round(recommendation.weights.counter * 100)}% · 配合 {Math.round(recommendation.weights.synergy * 100)}% · 梯度 {Math.round(recommendation.weights.tier * 100)}%
+                提升 {Math.round(recommendation.weights.counterLift * 100)}% · 对敌 {Math.round(recommendation.weights.matchup * 100)}% · 配合 {Math.round(recommendation.weights.synergy * 100)}% · 梯度 {Math.round(recommendation.weights.tier * 100)}%
               </strong>
             </div>
             <div><span>可信度</span><strong>{recommendation.confidence}</strong></div>
+            <div><span>阵容提升</span><strong>对敌 {recommendation.matchupScore} 相对梯度 {recommendation.tierScore} → {recommendation.counterLiftScore}</strong></div>
             <div><span>原始梯度</span><strong>{recommendation.rawTierScore} → 压缩为 {recommendation.tierScore}</strong></div>
             <div><span>敌方负向</span><strong>{enemyDisadvantages} 项 · 扣 {recommendation.counterPenalty} 分</strong></div>
             <div><span>队友负向</span><strong>{teammateConflicts} 项 · 扣 {recommendation.synergyPenalty} 分</strong></div>
@@ -595,8 +603,10 @@ export function BpAssistant() {
         const synergyBreakdown = calculateRelationshipBreakdown(synergyRelations, 4.2);
         const matchupScore = Math.round(clamp(matchupBreakdown.score, 8, 94));
         const synergyScore = Math.round(clamp(synergyBreakdown.score, 12, 92));
+        const counterLiftScore = calculateCounterLiftScore(matchupScore, heroTierScore);
         const { score, weights } = calculateRecommendationScore({
-          counterScore: matchupScore,
+          matchupScore,
+          counterLiftScore,
           synergyScore,
           tierScore: heroTierScore,
           enemyCount: enemyEntries.length,
@@ -627,7 +637,7 @@ export function BpAssistant() {
         } else {
           reasons.push(allyHeroes.length ? "队友关系正在同步，当前按中性值计算" : "尚未录入队友，配合项不计权重");
         }
-        reasons.push(`${target} ${hero.tier || "未分级"}：原梯度 ${rawTierScore}，压缩后 ${heroTierScore}`);
+        reasons.push(`阵容提升 ${counterLiftScore}：对敌 ${matchupScore} 相对梯度基准 ${heroTierScore}`);
 
         const risk = matchupScore < 44
           ? "风险：对位数据偏弱，建议结合熟练度谨慎选择。"
@@ -640,6 +650,7 @@ export function BpAssistant() {
         return {
           hero,
           score,
+          counterLiftScore,
           matchupScore,
           tierScore: heroTierScore,
           rawTierScore,
@@ -655,6 +666,7 @@ export function BpAssistant() {
         };
       })
       .sort((a, b) => b.score - a.score
+        || b.counterLiftScore - a.counterLiftScore
         || (b.matchupScore + b.synergyScore) - (a.matchupScore + a.synergyScore)
         || b.tierScore - a.tierScore)
       .slice(0, 5);
@@ -842,7 +854,7 @@ export function BpAssistant() {
                 <h2>{ally[target] ? `替换 ${ally[target]?.name} 的候选` : `${target}补位推荐`}</h2>
                 <p>{enemy[target] ? `重点计算与 ${enemy[target]?.name} 的同路对位，并覆盖敌方其余阵容` : `综合敌方全阵容克制与我方配合${Object.values(enemy).some(Boolean) ? "" : "，补充敌方后会更准确"}`}{bannedHeroes.length ? ` · 已排除 ${bannedHeroes.length} 名被 Ban 英雄` : ""}</p>
               </div>
-              <div className="method-tag"><span>三因子</span><strong>克制 × 配合 × 梯度</strong></div>
+              <div className="method-tag"><span>四因子</span><strong>提升 × 克制 × 配合 × 梯度</strong></div>
             </header>
 
             {(metaLoading || (recommendLoading && !recommendations.length)) && (
@@ -874,7 +886,7 @@ export function BpAssistant() {
             {analysisError && <p className="inline-warning">部分关系暂未同步，缺失项会自动按中性值处理并降低影响：{analysisError}</p>}
             <footer className="result-note">
               <span>i</span>
-              <p>双方阵容均已录入时：对敌克制 50% + 队友配合 30% + 压缩梯度 20%；正负关系完全来自巅峰千强样本，劣势与冲突单独扣分。</p>
+              <p>双方阵容均已录入时：阵容提升 30% + 对敌净分 25% + 队友配合 30% + 压缩梯度 15%；正负关系完全来自巅峰千强样本，劣势与冲突单独扣分。</p>
             </footer>
           </section>
         </section>

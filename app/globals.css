@@ -1108,6 +1108,14 @@ summary:focus-visible {
   background: linear-gradient(90deg, #8770df, #b498ff);
 }
 
+.metric-row--lift .metric-track i {
+  background: linear-gradient(90deg, #d99632, #ffd074);
+}
+
+.metric-row--lift strong {
+  color: #ffd074;
+}
+
 .metric-row--synergy .metric-track i {
   background: linear-gradient(90deg, #2b9f9b, #5ce7df);
 }
