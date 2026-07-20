@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#F5F8FF</color>
+    <color name="muted">#93A3C2</color>
+    <color name="muted_2">#667695</color>
+    <color name="background">#07101F</color>
+    <color name="panel">#0E1728</color>
+    <color name="panel_2">#121D32</color>
+    <color name="line">#263A5D</color>
+    <color name="blue">#5B8DFF</color>
+    <color name="cyan">#55E4DF</color>
+    <color name="danger">#FF6A7E</color>
+    <color name="warning">#FFD074</color>
+</resources>
