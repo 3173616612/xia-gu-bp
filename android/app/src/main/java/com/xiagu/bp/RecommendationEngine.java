@@ -86,8 +86,14 @@ final class RecommendationEngine {
             value.negativePenalty = matchup.negativePenalty + synergy.negativePenalty;
             value.secondaryRole = !targetLane.equals(candidate.tierRole) && candidate.positions.size() > 1;
             String roleNote = value.secondaryRole ? " · 多位置" : "";
+            String tierLabel = candidate.tier == null || candidate.tier.isBlank()
+                ? String.valueOf(tierScore)
+                : candidate.tier + "/" + tierScore;
+            String negativeNote = value.negativePenalty > 0 ? " · 负向-" + value.negativePenalty : "";
             String confidence = sampleTotal >= 800 ? "高" : sampleTotal >= 180 ? "中" : "低";
-            value.summary = "对敌 " + matchup.score + " · 配合 " + synergy.score + " · 提升 " + counterLift + roleNote + " · 置信度" + confidence;
+            value.summary = "对敌 " + matchup.score + " · 配合 " + synergy.score
+                + " · 梯度 " + tierLabel + " · 提升 " + counterLift
+                + negativeNote + roleNote + " · 置信度" + confidence;
             output.add(value);
         }
 

@@ -33,32 +33,23 @@ public final class AvatarFixtureActivity extends Activity {
         BpApiClient.loadMeta(new BpApiClient.Callback<>() {
             @Override
             public void onSuccess(List<BpModels.Hero> heroes) {
-                AvatarRecognitionEngine.recognize(
-                    AvatarFixtureActivity.this,
-                    fixture,
-                    heroes,
-                    true,
-                    new AvatarRecognitionEngine.Callback() {
-                        @Override
-                        public void onReady(BpModels.DetectedLineup lineup) {
-                            fixture.recycle();
-                            String report = "allies=" + names(lineup.allies)
-                                + "\nenemies=" + names(lineup.enemies)
-                                + "\nbans=" + names(lineup.bans)
-                                + "\nlayout=" + lineup.layoutProfile
-                                + "\nslots=" + String.join(" | ", lineup.slotTrace)
-                                + "\nconfidence=" + lineup.confidence
-                                + "\nissues=" + String.join(" | ", lineup.issues);
-                            show(report);
-                        }
-
-                        @Override
-                        public void onError(String message) {
-                            fixture.recycle();
-                            show(message);
-                        }
+                List<BpModels.Hero> originalAvatars = application().originalAvatarRoster();
+                if (!originalAvatars.isEmpty()) {
+                    recognize(fixture, heroes, originalAvatars);
+                    return;
+                }
+                BpApiClient.loadOriginalAvatarRoster(new BpApiClient.Callback<>() {
+                    @Override
+                    public void onSuccess(List<BpModels.Hero> fallbackAvatars) {
+                        recognize(fixture, heroes, fallbackAvatars);
                     }
-                );
+
+                    @Override
+                    public void onError(String message) {
+                        fixture.recycle();
+                        show(message);
+                    }
+                });
             }
 
             @Override
@@ -67,6 +58,45 @@ public final class AvatarFixtureActivity extends Activity {
                 show(message);
             }
         });
+    }
+
+    private XiaGuBpApplication application() {
+        return (XiaGuBpApplication) getApplication();
+    }
+
+    private void recognize(
+        Bitmap fixture,
+        List<BpModels.Hero> heroes,
+        List<BpModels.Hero> originalAvatars
+    ) {
+        AvatarRecognitionEngine.recognize(
+            AvatarFixtureActivity.this,
+            fixture,
+            heroes,
+            originalAvatars,
+            true,
+            new AvatarRecognitionEngine.Callback() {
+                @Override
+                public void onReady(BpModels.DetectedLineup lineup) {
+                    fixture.recycle();
+                    String report = "avatar_source=https://tianyuanzhiyi.com/api/allheroes"
+                        + "\nallies=" + names(lineup.allies)
+                        + "\nenemies=" + names(lineup.enemies)
+                        + "\nbans=" + names(lineup.bans)
+                        + "\nlayout=" + lineup.layoutProfile
+                        + "\nslots=" + String.join(" | ", lineup.slotTrace)
+                        + "\nconfidence=" + lineup.confidence
+                        + "\nissues=" + String.join(" | ", lineup.issues);
+                    show(report);
+                }
+
+                @Override
+                public void onError(String message) {
+                    fixture.recycle();
+                    show(message);
+                }
+            }
+        );
     }
 
     private void show(String value) {

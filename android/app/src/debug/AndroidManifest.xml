@@ -9,5 +9,8 @@
             android:name=".AvatarFixtureActivity"
             android:exported="true"
             android:screenOrientation="landscape" />
+        <activity
+            android:name=".DirectDataFixtureActivity"
+            android:exported="true" />
     </application>
 </manifest>

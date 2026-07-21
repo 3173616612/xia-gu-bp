@@ -88,6 +88,9 @@ public final class RecommendationEngineTest {
         List<BpModels.Recommendation> recommendations = RecommendationEngine.recommend(roster, analyses, lineup, "游走");
         assertEquals("庄周", recommendations.get(0).hero.name);
         assertTrue(recommendations.get(0).score > recommendations.get(1).score);
+        assertTrue(recommendations.get(0).summary.contains("对敌"));
+        assertTrue(recommendations.get(0).summary.contains("配合"));
+        assertTrue(recommendations.get(0).summary.contains("梯度"));
     }
 
     private static BpModels.Hero hero(int id, String name, double tierScore, String tierRole, String... positions) {

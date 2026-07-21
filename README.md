@@ -27,4 +27,4 @@ npm run build
 
 ## Android 悬浮助手
 
-原生 APK 使用本地英雄头像匹配识别两侧已选阵容与顶部 BAN 位，中央候选区硬排除；头像库随实时接口的 `avatarUrl` 指纹增量更新。构建、隐私和非标准阵容说明见 [`android/README.md`](android/README.md)。
+原生 APK 使用本地英雄头像匹配识别两侧已选阵容与顶部 BAN 位，中央候选区硬排除；推荐算法内置，英雄、梯度和四类关系直接读取天元之弈国内接口，不依赖公开站点。头像库随原始接口的 `avatarUrl` 指纹增量更新。构建、隐私和非标准阵容说明见 [`android/README.md`](android/README.md)。

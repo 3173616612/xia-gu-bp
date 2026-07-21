@@ -2,6 +2,8 @@ package com.xiagu.bp;
 
 import android.app.Application;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -16,10 +18,11 @@ public final class XiaGuBpApplication extends Application {
     }
 
     private final List<Listener> listeners = new CopyOnWriteArrayList<>();
+    private volatile List<BpModels.Hero> originalAvatarRoster = Collections.emptyList();
     private volatile BootstrapState bootstrapState = new BootstrapState(
         Phase.SYNCING,
         0,
-        "正在同步巅峰千强英雄库"
+        "正在直连天元之弈原始头像库"
     );
 
     @Override
@@ -41,19 +44,24 @@ public final class XiaGuBpApplication extends Application {
         listeners.remove(listener);
     }
 
+    List<BpModels.Hero> originalAvatarRoster() {
+        return originalAvatarRoster;
+    }
+
     private void startBootstrap() {
-        publish(new BootstrapState(Phase.SYNCING, 0, "正在同步巅峰千强英雄库"));
-        BpApiClient.loadMeta(new BpApiClient.Callback<>() {
+        publish(new BootstrapState(Phase.SYNCING, 0, "正在直连天元之弈原始头像库"));
+        BpApiClient.loadOriginalAvatarRoster(new BpApiClient.Callback<>() {
             @Override
             public void onSuccess(List<BpModels.Hero> heroes) {
-                publish(new BootstrapState(Phase.BUILDING, heroes.size(), "正在建立本地头像描述库"));
+                originalAvatarRoster = Collections.unmodifiableList(new ArrayList<>(heroes));
+                publish(new BootstrapState(Phase.BUILDING, heroes.size(), "正在建立天元原始头像描述库"));
                 AvatarRecognitionEngine.prewarm(
                     XiaGuBpApplication.this,
                     heroes,
                     new AvatarRecognitionEngine.PrewarmCallback() {
                         @Override
                         public void onReady(int count) {
-                            publish(new BootstrapState(Phase.READY, count, "头像库冷启动完成"));
+                            publish(new BootstrapState(Phase.READY, count, "天元原始头像库冷启动完成"));
                         }
 
                         @Override

@@ -85,7 +85,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:lineSpacingExtra="4dp"
-                    android:text="软件启动时会先预热头像库。悬浮窗截图只识别两侧已选头像和顶部 BAN 头像；中央候选英雄区始终排除，分路识别失败时可手动切换。"
+                    android:text="软件启动时会先预热头像库。梯度和四类英雄关系直连天元之弈，推荐算法在手机本地运行，不经过公开 BP 站点。悬浮窗只识别两侧已选和顶部 BAN；中央候选区始终排除。"
                     android:textColor="@color/muted"
                     android:textSize="14sp" />
 
@@ -245,41 +245,5 @@
             </LinearLayout>
         </ScrollView>
 
-        <WebView
-            android:id="@+id/webView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@color/background"
-            android:visibility="gone" />
     </FrameLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:background="#0A1324"
-        android:orientation="horizontal"
-        android:padding="8dp">
-
-        <Button
-            android:id="@+id/assistantTab"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_marginEnd="4dp"
-            android:layout_weight="1"
-            android:background="@drawable/bg_primary"
-            android:text="悬浮识别"
-            android:textAllCaps="false"
-            android:textColor="@color/ink" />
-
-        <Button
-            android:id="@+id/webTab"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_marginStart="4dp"
-            android:layout_weight="1"
-            android:background="@drawable/bg_outline"
-            android:text="完整 BP 面板"
-            android:textAllCaps="false"
-            android:textColor="@color/ink" />
-    </LinearLayout>
 </LinearLayout>

@@ -235,7 +235,6 @@ public final class OverlayCaptureService extends Service {
         panel.findViewById(R.id.openFullPanelButton).setOnClickListener(view -> {
             Intent open = new Intent(this, MainActivity.class);
             open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            open.putExtra(MainActivity.EXTRA_OPEN_WEB, true);
             startActivity(open);
             collapsePanel();
         });
@@ -419,30 +418,27 @@ public final class OverlayCaptureService extends Service {
     }
 
     private void recognizePortraits(Bitmap bitmap, String suggestedLane) {
-        overlayStatus.setText("正在同步 131 位英雄头像库；中央候选区已排除…");
+        overlayStatus.setText("正从天元之弈直连梯度与英雄关系…");
         BpApiClient.loadMeta(new BpApiClient.Callback<>() {
             @Override
             public void onSuccess(List<BpModels.Hero> heroes) {
-                AvatarRecognitionEngine.recognize(
-                    OverlayCaptureService.this,
-                    bitmap,
-                    heroes,
-                    AppPrefs.ourSideLeft(OverlayCaptureService.this),
-                    new AvatarRecognitionEngine.Callback() {
-                        @Override
-                        public void onReady(BpModels.DetectedLineup lineup) {
-                            bitmap.recycle();
-                            lineup.suggestedLane = suggestedLane;
-                            handleRecognizedLineup(lineup, heroes);
-                        }
-
-                        @Override
-                        public void onError(String message) {
-                            bitmap.recycle();
-                            finishWithError(message);
-                        }
+                List<BpModels.Hero> originalAvatars = application().originalAvatarRoster();
+                if (!originalAvatars.isEmpty()) {
+                    recognizeWithOriginalAvatars(bitmap, suggestedLane, heroes, originalAvatars);
+                    return;
+                }
+                BpApiClient.loadOriginalAvatarRoster(new BpApiClient.Callback<>() {
+                    @Override
+                    public void onSuccess(List<BpModels.Hero> fallbackAvatars) {
+                        recognizeWithOriginalAvatars(bitmap, suggestedLane, heroes, fallbackAvatars);
                     }
-                );
+
+                    @Override
+                    public void onError(String message) {
+                        bitmap.recycle();
+                        finishWithError(message);
+                    }
+                });
             }
 
             @Override
@@ -451,6 +447,39 @@ public final class OverlayCaptureService extends Service {
                 finishWithError(message);
             }
         });
+    }
+
+    private XiaGuBpApplication application() {
+        return (XiaGuBpApplication) getApplication();
+    }
+
+    private void recognizeWithOriginalAvatars(
+        Bitmap bitmap,
+        String suggestedLane,
+        List<BpModels.Hero> heroes,
+        List<BpModels.Hero> originalAvatars
+    ) {
+        AvatarRecognitionEngine.recognize(
+            OverlayCaptureService.this,
+            bitmap,
+            heroes,
+            originalAvatars,
+            AppPrefs.ourSideLeft(OverlayCaptureService.this),
+            new AvatarRecognitionEngine.Callback() {
+                @Override
+                public void onReady(BpModels.DetectedLineup lineup) {
+                    bitmap.recycle();
+                    lineup.suggestedLane = suggestedLane;
+                    handleRecognizedLineup(lineup, heroes);
+                }
+
+                @Override
+                public void onError(String message) {
+                    bitmap.recycle();
+                    finishWithError(message);
+                }
+            }
+        );
     }
 
     private void handleRecognizedLineup(BpModels.DetectedLineup lineup, List<BpModels.Hero> heroes) {
@@ -473,7 +502,9 @@ public final class OverlayCaptureService extends Service {
                     AppPrefs.lane(OverlayCaptureService.this)
                 );
                 showRecommendations(recommendations);
-                overlayStatus.setText("头像识别完成 · " + AppPrefs.lane(OverlayCaptureService.this) + "推荐已更新");
+                String tierDate = BpApiClient.latestTierDate();
+                overlayStatus.setText("天元直连完成" + (tierDate.isBlank() ? "" : " · " + tierDate)
+                    + " · " + AppPrefs.lane(OverlayCaptureService.this) + "推荐已更新");
                 scanButton.setEnabled(true);
             }
 
@@ -511,7 +542,7 @@ public final class OverlayCaptureService extends Service {
         }
         if (recommendations.isEmpty()) {
             recommendationOne.setVisibility(View.VISIBLE);
-            recommendationOne.setText("暂无符合该分路的可用候选，请在完整面板中核对已选与 BAN 位。");
+            recommendationOne.setText("暂无符合该分路的可用候选，请切换分路或重新识别阵容与 BAN 位。");
         }
     }
 

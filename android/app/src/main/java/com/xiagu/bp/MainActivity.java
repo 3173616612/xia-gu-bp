@@ -1,6 +1,5 @@
 package com.xiagu.bp;
 
-import android.annotation.SuppressLint;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
@@ -14,27 +13,16 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.WebSettings;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 public final class MainActivity extends Activity {
-    static final String EXTRA_OPEN_WEB = "open_web";
     private static final int REQUEST_OVERLAY = 4101;
     private static final int REQUEST_CAPTURE = 4102;
     private static final int REQUEST_NOTIFICATIONS = 4103;
-    private static final String SITE_URL = "https://xia-gu-bp-live.yxf3173616612.chatgpt.site/";
 
-    private ScrollView controlScreen;
-    private WebView webView;
-    private Button assistantTab;
-    private Button webTab;
     private Button startAssistantButton;
     private TextView overlayPermissionStatus;
     private TextView capturePermissionStatus;
@@ -42,7 +30,6 @@ public final class MainActivity extends Activity {
     private TextView dataStatus;
     private RadioGroup laneGroup;
     private RadioGroup teamSideGroup;
-    private boolean webLoaded;
     private final XiaGuBpApplication.Listener bootstrapListener = this::showBootstrapState;
 
     @Override
@@ -52,21 +39,14 @@ public final class MainActivity extends Activity {
         bindViews();
         setupLaneButtons(laneGroup, AppPrefs.lane(this));
         setupTeamSide();
-        setupWebView();
         setupActions();
         refreshPermissionState();
         startAssistantButton.setEnabled(false);
         startAssistantButton.setText("正在初始化头像库…");
         application().addBootstrapListener(bootstrapListener);
-
-        if (getIntent().getBooleanExtra(EXTRA_OPEN_WEB, false)) showWeb();
     }
 
     private void bindViews() {
-        controlScreen = findViewById(R.id.controlScreen);
-        webView = findViewById(R.id.webView);
-        assistantTab = findViewById(R.id.assistantTab);
-        webTab = findViewById(R.id.webTab);
         startAssistantButton = findViewById(R.id.startAssistantButton);
         overlayPermissionStatus = findViewById(R.id.overlayPermissionStatus);
         capturePermissionStatus = findViewById(R.id.capturePermissionStatus);
@@ -79,8 +59,6 @@ public final class MainActivity extends Activity {
     private void setupActions() {
         findViewById(R.id.grantOverlayButton).setOnClickListener(view -> requestOverlayPermission());
         startAssistantButton.setOnClickListener(view -> startAssistantFlow());
-        assistantTab.setOnClickListener(view -> showControls());
-        webTab.setOnClickListener(view -> showWeb());
     }
 
     private void setupTeamSide() {
@@ -117,45 +95,6 @@ public final class MainActivity extends Activity {
             View checked = radioGroup.findViewById(checkedId);
             if (checked != null && checked.getTag() instanceof String lane) AppPrefs.setLane(this, lane);
         });
-    }
-
-    @SuppressLint("SetJavaScriptEnabled")
-    private void setupWebView() {
-        WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setLoadWithOverviewMode(true);
-        settings.setUseWideViewPort(false);
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                Uri target = request.getUrl();
-                if ("https".equalsIgnoreCase(target.getScheme())
-                    && "xia-gu-bp-live.yxf3173616612.chatgpt.site".equalsIgnoreCase(target.getHost())) {
-                    return false;
-                }
-                startActivity(new Intent(Intent.ACTION_VIEW, target));
-                return true;
-            }
-        });
-    }
-
-    private void showControls() {
-        controlScreen.setVisibility(View.VISIBLE);
-        webView.setVisibility(View.GONE);
-        assistantTab.setBackgroundResource(R.drawable.bg_primary);
-        webTab.setBackgroundResource(R.drawable.bg_outline);
-    }
-
-    private void showWeb() {
-        controlScreen.setVisibility(View.GONE);
-        webView.setVisibility(View.VISIBLE);
-        assistantTab.setBackgroundResource(R.drawable.bg_outline);
-        webTab.setBackgroundResource(R.drawable.bg_primary);
-        if (!webLoaded) {
-            webLoaded = true;
-            webView.loadUrl(SITE_URL);
-        }
     }
 
     private void startAssistantFlow() {
@@ -223,22 +162,22 @@ public final class MainActivity extends Activity {
     private void showBootstrapState(XiaGuBpApplication.BootstrapState state) {
         switch (state.phase()) {
             case SYNCING -> {
-                dataStatus.setText("巅峰千强 · 软件启动同步中");
+                dataStatus.setText("天元直连 · 软件启动同步头像");
                 startAssistantButton.setEnabled(false);
                 startAssistantButton.setText("正在同步英雄库…");
             }
             case BUILDING -> {
-                dataStatus.setText("巅峰千强 · 启动预热 " + state.heroCount() + " 位");
+                dataStatus.setText("天元直连 · 启动预热 " + state.heroCount() + " 位");
                 startAssistantButton.setEnabled(false);
                 startAssistantButton.setText("正在初始化头像库…");
             }
             case READY -> {
-                dataStatus.setText("巅峰千强 · 实时头像 " + state.heroCount() + " 位 · 已预热");
+                dataStatus.setText("天元直连 · " + state.heroCount() + " 位 · 本地算法就绪");
                 startAssistantButton.setEnabled(true);
                 startAssistantButton.setText("启动悬浮助手");
             }
             case ERROR -> {
-                dataStatus.setText("巅峰千强 · 启动初始化失败");
+                dataStatus.setText("天元直连 · 启动初始化失败");
                 mainStatus.setText("头像库未完成初始化，请联网后重新启动应用。\n" + state.message());
                 startAssistantButton.setEnabled(false);
                 startAssistantButton.setText("头像库尚未就绪");
@@ -250,16 +189,6 @@ public final class MainActivity extends Activity {
     protected void onDestroy() {
         application().removeBootstrapListener(bootstrapListener);
         super.onDestroy();
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (webView.getVisibility() == View.VISIBLE) {
-            if (webView.canGoBack()) webView.goBack();
-            else showControls();
-            return;
-        }
-        super.onBackPressed();
     }
 
     private int dp(int value) {

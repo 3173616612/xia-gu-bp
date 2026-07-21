@@ -121,7 +121,7 @@
                 android:layout_marginStart="5dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_outline"
-                android:text="完整面板"
+                android:text="应用设置"
                 android:textAllCaps="false"
                 android:textColor="@color/ink"
                 android:textSize="12sp" />

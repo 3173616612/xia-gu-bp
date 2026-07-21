@@ -72,15 +72,16 @@ final class AvatarRecognitionEngine {
     static void recognize(
         Context context,
         Bitmap frame,
-        List<BpModels.Hero> heroes,
+        List<BpModels.Hero> rosterHeroes,
+        List<BpModels.Hero> originalAvatarHeroes,
         boolean ourSideLeft,
         Callback callback
     ) {
         Context appContext = context.getApplicationContext();
         WORKER.execute(() -> {
             try {
-                Library library = loadLibrary(appContext, heroes);
-                BpModels.DetectedLineup lineup = recognizeSync(frame, heroes, library, ourSideLeft);
+                Library library = loadLibrary(appContext, originalAvatarHeroes);
+                BpModels.DetectedLineup lineup = recognizeSync(frame, rosterHeroes, library, ourSideLeft);
                 MAIN.post(() -> callback.onReady(lineup));
             } catch (Exception error) {
                 MAIN.post(() -> callback.onError(readable(error)));
@@ -175,7 +176,7 @@ final class AvatarRecognitionEngine {
             output.issues.add("空槽或低置信度槽位已跳过（已选 " + rejectedPicks + "、BAN " + rejectedBans + "），未强行猜测。");
         }
         if (uniquePicks.size() < acceptedPicks.size()) {
-            output.issues.add("重复头像只保留了置信度更高的槽位，建议在完整面板核对。");
+            output.issues.add("重复头像只保留了置信度更高的槽位，建议重新识别或核对画面。");
         }
         if (hasMultiRole) output.issues.add("检测到多位置英雄，推荐会按其可用分路软加权。");
         if (output.allies.size() != 5 || output.enemies.size() != 5) {
