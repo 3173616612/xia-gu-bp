@@ -64,6 +64,9 @@ public final class MainActivity extends Activity {
     private void setupActions() {
         findViewById(R.id.grantOverlayButton).setOnClickListener(view -> requestOverlayPermission());
         startAssistantButton.setOnClickListener(view -> startAssistantFlow());
+        findViewById(R.id.manualBpButton).setOnClickListener(view ->
+            startActivity(new Intent(this, ManualBpActivity.class))
+        );
         findViewById(R.id.sourceLink).setOnClickListener(view ->
             openUri(Uri.parse("https://tianyuanzhiyi.com/"), "未找到可打开网页的应用。")
         );

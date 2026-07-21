@@ -432,12 +432,6 @@ function RecommendationCard({
         <details>
           <summary>查看依据</summary>
           <div className="evidence-popover">
-            <div>
-              <span>本次权重</span>
-              <strong>
-                提升 {Math.round(recommendation.weights.counterLift * 100)}% · 对敌 {Math.round(recommendation.weights.matchup * 100)}% · 配合 {Math.round(recommendation.weights.synergy * 100)}% · 梯度 {Math.round(recommendation.weights.tier * 100)}%
-              </strong>
-            </div>
             <div><span>可信度</span><strong>{recommendation.confidence}</strong></div>
             <div><span>阵容提升</span><strong>对敌 {recommendation.matchupScore} 相对梯度 {recommendation.tierScore} → {recommendation.counterLiftScore}</strong></div>
             <div><span>原始梯度</span><strong>{recommendation.rawTierScore} → 压缩为 {recommendation.tierScore}</strong></div>
@@ -746,9 +740,9 @@ export function BpAssistant() {
         </div>
         <div className="intro-stats" aria-label="数据能力">
           <div><strong>{heroes.length || "—"}</strong><span>英雄实时覆盖</span></div>
-          <div><strong>50<small>%</small></strong><span>对敌克制权重</span></div>
-          <div><strong>30<small>%</small></strong><span>队友配合权重</span></div>
-          <div><strong>20<small>%</small></strong><span>压缩梯度权重</span></div>
+          <div><strong>实时</strong><span>巅峰千强梯度</span></div>
+          <div><strong>正负</strong><span>敌我关系计分</span></div>
+          <div><strong>兼容</strong><span>多位置与缺位阵容</span></div>
         </div>
       </section>
 
@@ -886,7 +880,7 @@ export function BpAssistant() {
             {analysisError && <p className="inline-warning">部分关系暂未同步，缺失项会自动按中性值处理并降低影响：{analysisError}</p>}
             <footer className="result-note">
               <span>i</span>
-              <p>双方阵容均已录入时：阵容提升 30% + 对敌净分 25% + 队友配合 30% + 压缩梯度 15%；正负关系完全来自巅峰千强样本，劣势与冲突单独扣分。</p>
+              <p>推荐综合阵容提升、对敌净分、队友配合与当前梯度；正负关系来自巅峰千强样本，劣势与冲突会单独扣分。</p>
             </footer>
           </section>
         </section>

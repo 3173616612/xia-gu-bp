@@ -26,6 +26,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ManualBpActivity"
+            android:exported="false" />
+
         <service
             android:name=".OverlayCaptureService"
             android:exported="false"
