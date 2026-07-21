@@ -40,4 +40,35 @@ public final class BpScreenLayoutTest {
         assertEquals(10, picks);
         assertEquals(10, bans);
     }
+
+    @Test
+    public void adaptiveGeometryUsesContinuousAnchorsWithoutEnteringCandidateArea() {
+        BpScreenLayout layout = BpScreenLayout.adaptive(
+            2048,
+            941,
+            0.168,
+            0.116,
+            0,
+            1,
+            0.136,
+            0.068,
+            0.042,
+            0.052
+        );
+
+        BpScreenLayout.Slot firstPick = layout.slots.stream()
+            .filter(slot -> slot.kind == BpScreenLayout.Kind.LEFT_PICK && slot.index == 0)
+            .findFirst()
+            .orElseThrow();
+        BpScreenLayout.Slot firstBan = layout.slots.stream()
+            .filter(slot -> slot.kind == BpScreenLayout.Kind.LEFT_BAN && slot.index == 0)
+            .findFirst()
+            .orElseThrow();
+
+        assertEquals(158, (firstPick.crop.left + firstPick.crop.right) / 2);
+        assertEquals(128, (firstBan.crop.left + firstBan.crop.right) / 2);
+        for (BpScreenLayout.Slot slot : layout.slots) {
+            assertFalse(slot.crop.intersects(layout.candidateExclusion));
+        }
+    }
 }

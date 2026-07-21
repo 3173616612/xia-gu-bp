@@ -3,6 +3,7 @@ package com.xiagu.bp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Geometry for the Honor of Kings landscape draft screen.
@@ -74,13 +75,22 @@ final class BpScreenLayout {
     final int width;
     final int height;
     final Profile profile;
+    final String profileName;
     final IntRect candidateExclusion;
     final List<Slot> slots;
 
-    private BpScreenLayout(int width, int height, Profile profile, IntRect candidateExclusion, List<Slot> slots) {
+    private BpScreenLayout(
+        int width,
+        int height,
+        Profile profile,
+        String profileName,
+        IntRect candidateExclusion,
+        List<Slot> slots
+    ) {
         this.width = width;
         this.height = height;
         this.profile = profile;
+        this.profileName = profileName;
         this.candidateExclusion = candidateExclusion;
         this.slots = Collections.unmodifiableList(slots);
     }
@@ -96,21 +106,93 @@ final class BpScreenLayout {
     }
 
     static BpScreenLayout create(int width, int height, Profile profile) {
+        return create(
+            width,
+            height,
+            profile,
+            profile.name(),
+            profile.pickCenterFromEdge,
+            0.124,
+            0,
+            1,
+            profile.firstBanFromEdge,
+            profile.banSpacing,
+            0.045,
+            profile.banSide
+        );
+    }
+
+    static BpScreenLayout adaptive(
+        int width,
+        int height,
+        double pickCenterFromEdge,
+        double pickSide,
+        double pickYOffset,
+        double pickSpread,
+        double firstBanFromEdge,
+        double banSpacing,
+        double banCenterY,
+        double banSide
+    ) {
+        String name = String.format(
+            Locale.ROOT,
+            "ADAPTIVE[p=%.3f/s=%.3f/y=%+.3f×%.3f,b=%.3f/%.3f/y=%.3f/s=%.3f]",
+            pickCenterFromEdge,
+            pickSide,
+            pickYOffset,
+            pickSpread,
+            firstBanFromEdge,
+            banSpacing,
+            banCenterY,
+            banSide
+        );
+        return create(
+            width,
+            height,
+            null,
+            name,
+            pickCenterFromEdge,
+            pickSide,
+            pickYOffset,
+            pickSpread,
+            firstBanFromEdge,
+            banSpacing,
+            banCenterY,
+            banSide
+        );
+    }
+
+    private static BpScreenLayout create(
+        int width,
+        int height,
+        Profile profile,
+        String profileName,
+        double pickCenterFromEdgeRatio,
+        double pickSideRatio,
+        double pickYOffset,
+        double pickSpread,
+        double firstBanFromEdgeRatio,
+        double banSpacingRatio,
+        double banCenterYRatio,
+        double banSideRatio
+    ) {
         if (width <= 0 || height <= 0) throw new IllegalArgumentException("invalid screen size");
 
         List<Slot> slots = new ArrayList<>(20);
-        int pickSide = Math.max(24, (int) Math.round(height * 0.124));
-        int pickCenterFromEdge = (int) Math.round(height * profile.pickCenterFromEdge);
+        int pickSide = Math.max(24, (int) Math.round(height * pickSideRatio));
+        int pickCenterFromEdge = (int) Math.round(height * pickCenterFromEdgeRatio);
+        double verticalCenter = 0.492;
         for (int index = 0; index < PICK_Y.length; index++) {
-            int centerY = (int) Math.round(height * PICK_Y[index]);
+            double yRatio = verticalCenter + (PICK_Y[index] - verticalCenter) * pickSpread + pickYOffset;
+            int centerY = (int) Math.round(height * yRatio);
             slots.add(new Slot(Kind.LEFT_PICK, index, square(width, height, pickCenterFromEdge, centerY, pickSide), false));
             slots.add(new Slot(Kind.RIGHT_PICK, index, square(width, height, width - pickCenterFromEdge, centerY, pickSide), false));
         }
 
-        int banSide = Math.max(18, (int) Math.round(height * profile.banSide));
-        int banCenterY = (int) Math.round(height * 0.045);
+        int banSide = Math.max(18, (int) Math.round(height * banSideRatio));
+        int banCenterY = (int) Math.round(height * banCenterYRatio);
         for (int index = 0; index < 5; index++) {
-            double distance = profile.firstBanFromEdge + profile.banSpacing * index;
+            double distance = firstBanFromEdgeRatio + banSpacingRatio * index;
             int fromEdge = (int) Math.round(height * distance);
             slots.add(new Slot(Kind.LEFT_BAN, index, square(width, height, fromEdge, banCenterY, banSide), true));
             slots.add(new Slot(Kind.RIGHT_BAN, index, square(width, height, width - fromEdge, banCenterY, banSide), true));
@@ -127,7 +209,7 @@ final class BpScreenLayout {
                 throw new IllegalStateException("recognition slot overlaps candidate browser");
             }
         }
-        return new BpScreenLayout(width, height, profile, exclusion, slots);
+        return new BpScreenLayout(width, height, profile, profileName, exclusion, slots);
     }
 
     private static IntRect square(int width, int height, int centerX, int centerY, int side) {

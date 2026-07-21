@@ -95,14 +95,14 @@ final class AvatarRecognitionEngine {
         Library library,
         boolean ourSideLeft
     ) {
-        BpScreenLayout layout = selectLayout(frame, library);
+        boolean obscureLeftBans = hasUpperLeftVideoOverlay(frame);
+        BpScreenLayout layout = selectLayout(frame, library, obscureLeftBans);
         Map<Integer, BpModels.Hero> heroesById = new HashMap<>();
         for (BpModels.Hero hero : heroes) heroesById.put(hero.id, hero);
 
         List<SlotMatch> acceptedPicks = new ArrayList<>();
         List<SlotMatch> acceptedBans = new ArrayList<>();
         List<String> slotTrace = new ArrayList<>();
-        boolean obscureLeftBans = hasUpperLeftVideoOverlay(frame);
         int rejectedPicks = 0;
         int rejectedBans = 0;
         for (BpScreenLayout.Slot slot : layout.slots) {
@@ -133,7 +133,7 @@ final class AvatarRecognitionEngine {
         }
 
         BpModels.DetectedLineup output = new BpModels.DetectedLineup();
-        output.layoutProfile = layout.profile.name();
+        output.layoutProfile = layout.profileName;
         output.slotTrace.addAll(slotTrace);
         double confidenceTotal = 0;
         int confidenceCount = 0;
@@ -206,25 +206,184 @@ final class AvatarRecognitionEngine {
         return sampled > 0 && (double) whitePixels / sampled > 0.020;
     }
 
-    private static BpScreenLayout selectLayout(Bitmap frame, Library library) {
-        List<BpScreenLayout> candidates = BpScreenLayout.candidates(frame.getWidth(), frame.getHeight());
-        BpScreenLayout bestLayout = candidates.get(0);
-        double bestQuality = Double.NEGATIVE_INFINITY;
-        for (BpScreenLayout candidate : candidates) {
-            double quality = layoutQuality(frame, candidate, library);
-            if (quality > bestQuality) {
-                bestQuality = quality;
-                bestLayout = candidate;
-            }
-        }
-        return bestLayout;
+    private static BpScreenLayout selectLayout(Bitmap frame, Library library, boolean obscureLeftBans) {
+        PickGeometry picks = searchPickGeometry(frame, library);
+        BanGeometry bans = searchBanGeometry(frame, library, picks, obscureLeftBans);
+        return adaptiveLayout(frame, picks, bans);
     }
 
-    private static double layoutQuality(Bitmap frame, BpScreenLayout layout, Library library) {
-        double quality = 0;
-        int strongPortraits = 0;
+    private static PickGeometry searchPickGeometry(Bitmap frame, Library library) {
+        PickGeometry best = new PickGeometry(0.145, 0.124, 0, 1);
+        double bestQuality = coarseLayoutQuality(
+            frame,
+            adaptiveLayout(frame, best, BanGeometry.DEFAULT),
+            library,
+            false,
+            false
+        );
+
+        for (double center = 0.090; center <= 0.211; center += 0.010) {
+            for (double side : new double[]{0.105, 0.115, 0.124, 0.133}) {
+                PickGeometry candidate = new PickGeometry(center, side, 0, 1);
+                double quality = coarseLayoutQuality(frame, adaptiveLayout(frame, candidate, BanGeometry.DEFAULT), library, false, false);
+                if (quality > bestQuality) {
+                    bestQuality = quality;
+                    best = candidate;
+                }
+            }
+        }
+
+        PickGeometry coarse = best;
+        for (double centerDelta = -0.008; centerDelta <= 0.0081; centerDelta += 0.002) {
+            for (double sideDelta = -0.006; sideDelta <= 0.0061; sideDelta += 0.003) {
+                PickGeometry candidate = new PickGeometry(
+                    coarse.centerFromEdge + centerDelta,
+                    coarse.side + sideDelta,
+                    0,
+                    1
+                );
+                double quality = coarseLayoutQuality(frame, adaptiveLayout(frame, candidate, BanGeometry.DEFAULT), library, false, false);
+                if (quality > bestQuality) {
+                    bestQuality = quality;
+                    best = candidate;
+                }
+            }
+        }
+
+        PickGeometry horizontal = best;
+        for (double yOffset : new double[]{-0.012, -0.006, 0, 0.006, 0.012}) {
+            for (double spread : new double[]{0.97, 1, 1.03}) {
+                PickGeometry candidate = new PickGeometry(horizontal.centerFromEdge, horizontal.side, yOffset, spread);
+                double quality = coarseLayoutQuality(frame, adaptiveLayout(frame, candidate, BanGeometry.DEFAULT), library, false, false);
+                if (quality > bestQuality) {
+                    bestQuality = quality;
+                    best = candidate;
+                }
+            }
+        }
+        return best;
+    }
+
+    private static BanGeometry searchBanGeometry(
+        Bitmap frame,
+        Library library,
+        PickGeometry picks,
+        boolean ignoreLeftBans
+    ) {
+        // Every observed UI keeps the nearest BAN center about 0.03 screen-heights closer to the
+        // edge than the large pick column. Keeping that relation prevents a one-slot shift when
+        // the first empty edge crop and the next four real portraits would otherwise score well.
+        double predictedFirst = Math.max(0.060, Math.min(0.185, picks.centerFromEdge - 0.032));
+        BanGeometry best = new BanGeometry(predictedFirst, 0.064, 0.045, 0.059);
+        double bestQuality = coarseLayoutQuality(
+            frame,
+            adaptiveLayout(frame, picks, best),
+            library,
+            true,
+            ignoreLeftBans
+        );
+        for (double firstDelta = -0.018; firstDelta <= 0.0181; firstDelta += 0.006) {
+            double first = predictedFirst + firstDelta;
+            for (double side : new double[]{0.045, 0.052, 0.059, 0.066}) {
+                BanGeometry candidate = new BanGeometry(first, 0.064, 0.045, side);
+                double quality = coarseLayoutQuality(frame, adaptiveLayout(frame, picks, candidate), library, true, ignoreLeftBans);
+                if (quality > bestQuality) {
+                    bestQuality = quality;
+                    best = candidate;
+                }
+            }
+        }
+
+        BanGeometry coarse = best;
+        for (double firstDelta = -0.006; firstDelta <= 0.0061; firstDelta += 0.002) {
+            for (double sideDelta = -0.006; sideDelta <= 0.0061; sideDelta += 0.003) {
+                BanGeometry candidate = new BanGeometry(
+                    coarse.firstFromEdge + firstDelta,
+                    coarse.spacing,
+                    coarse.centerY,
+                    coarse.side + sideDelta
+                );
+                double quality = coarseLayoutQuality(frame, adaptiveLayout(frame, picks, candidate), library, true, ignoreLeftBans);
+                if (quality > bestQuality) {
+                    bestQuality = quality;
+                    best = candidate;
+                }
+            }
+        }
+
+        BanGeometry horizontal = best;
+        for (double centerY : new double[]{0.036, 0.042, 0.048, 0.054}) {
+            for (double spacing : new double[]{0.060, 0.064, 0.068, 0.072}) {
+                BanGeometry candidate = new BanGeometry(
+                    horizontal.firstFromEdge,
+                    spacing,
+                    centerY,
+                    horizontal.side
+                );
+                double quality = coarseLayoutQuality(frame, adaptiveLayout(frame, picks, candidate), library, true, ignoreLeftBans);
+                if (quality > bestQuality) {
+                    bestQuality = quality;
+                    best = candidate;
+                }
+            }
+        }
+
+        // The anchor pass finds the correct neighborhood. A narrow full-descriptor pass then
+        // resolves 8-15 px shifts that matter disproportionately for the tiny BAN portraits.
+        BanGeometry neighborhood = best;
+        double bestFullQuality = Double.NEGATIVE_INFINITY;
+        for (double firstDelta : new double[]{-0.008, -0.004, 0, 0.004, 0.008}) {
+            BanGeometry candidate = new BanGeometry(
+                neighborhood.firstFromEdge + firstDelta,
+                neighborhood.spacing,
+                neighborhood.centerY,
+                neighborhood.side
+            );
+            double quality = fullBanLayoutQuality(
+                frame,
+                adaptiveLayout(frame, picks, candidate),
+                library,
+                ignoreLeftBans
+            );
+            if (quality > bestFullQuality) {
+                bestFullQuality = quality;
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    private static BpScreenLayout adaptiveLayout(Bitmap frame, PickGeometry picks, BanGeometry bans) {
+        return BpScreenLayout.adaptive(
+            frame.getWidth(),
+            frame.getHeight(),
+            picks.centerFromEdge,
+            picks.side,
+            picks.yOffset,
+            picks.spread,
+            bans.firstFromEdge,
+            bans.spacing,
+            bans.centerY,
+            bans.side
+        );
+    }
+
+    /**
+     * Scores only alternating slots with one descriptor per crop/reference. This makes continuous
+     * geometry search cheap enough to run on-device before the full multi-scale recognition pass.
+     */
+    private static double coarseLayoutQuality(
+        Bitmap frame,
+        BpScreenLayout layout,
+        Library library,
+        boolean bans,
+        boolean ignoreLeftBans
+    ) {
+        List<Double> slotScores = new ArrayList<>();
         for (BpScreenLayout.Slot slot : layout.slots) {
-            if (slot.isBan()) continue;
+            if (slot.isBan() != bans) continue;
+            if (!bans && slot.index % 2 != 0) continue;
+            if (ignoreLeftBans && slot.kind == BpScreenLayout.Kind.LEFT_BAN) continue;
             Bitmap crop = Bitmap.createBitmap(
                 frame,
                 slot.crop.left,
@@ -232,23 +391,54 @@ final class AvatarRecognitionEngine {
                 slot.crop.width(),
                 slot.crop.height()
             );
-            List<Descriptor> queries;
+            Descriptor query;
             try {
-                queries = descriptors(crop, false, false);
+                query = describe(crop, 0.88, 0, 0, slot.circular);
             } finally {
                 crop.recycle();
             }
-            Descriptor stats = queries.get(1);
-            if (stats.contrast < 0.105) continue;
+            if (query.contrast < 0.085) {
+                slotScores.add(0.0);
+                continue;
+            }
 
             double bestScore = -1;
+            double secondScore = -1;
             for (Reference reference : library.references) {
-                bestScore = Math.max(bestScore, bestSimilarity(queries, reference.squareCompact));
+                Descriptor anchor = bans ? reference.circularAnchor : reference.squareAnchor;
+                double score = similarity(query, anchor);
+                if (score > bestScore) {
+                    secondScore = bestScore;
+                    bestScore = score;
+                } else if (score > secondScore) {
+                    secondScore = score;
+                }
             }
-            quality += Math.max(0, bestScore - 0.35);
-            if (bestScore >= 0.50) strongPortraits++;
+            double margin = Math.max(0, bestScore - secondScore);
+            slotScores.add(Math.max(0, bestScore - 0.20) + Math.min(0.12, margin) * 0.6);
         }
-        return quality + strongPortraits * 0.05;
+        slotScores.sort(Comparator.reverseOrder());
+        int evidenceSlots = Math.min(4, slotScores.size());
+        double quality = 0;
+        for (int i = 0; i < evidenceSlots; i++) quality += slotScores.get(i);
+        return quality;
+    }
+
+    private static double fullBanLayoutQuality(
+        Bitmap frame,
+        BpScreenLayout layout,
+        Library library,
+        boolean ignoreLeftBans
+    ) {
+        double quality = 0;
+        for (BpScreenLayout.Slot slot : layout.slots) {
+            if (!slot.isBan() || slot.index % 2 != 0) continue;
+            if (ignoreLeftBans && slot.kind == BpScreenLayout.Kind.LEFT_BAN) continue;
+            SlotMatch match = matchSlot(frame, slot, library);
+            if (match.accepted) quality += 2 + match.score + Math.min(0.25, match.margin);
+            else quality += Math.max(0, match.score - 0.55) * 0.1;
+        }
+        return quality;
     }
 
     private static SlotMatch matchSlot(Bitmap frame, BpScreenLayout.Slot slot, Library library) {
@@ -290,7 +480,7 @@ final class AvatarRecognitionEngine {
         double margin = first.score - second;
         Descriptor stats = fullQueries.get(4);
         double minimumScore = 0.50;
-        double minimumMargin = slot.isBan() ? 0.009 : 0.035;
+        double minimumMargin = slot.isBan() ? 0.018 : 0.035;
         boolean accepted = stats.contrast >= 0.105
             && first.score >= minimumScore
             && margin >= minimumMargin;
@@ -324,7 +514,9 @@ final class AvatarRecognitionEngine {
                         descriptors(avatar, false, true),
                         descriptors(avatar, true, true),
                         descriptors(avatar, false, false),
-                        descriptors(avatar, true, false)
+                        descriptors(avatar, true, false),
+                        describe(avatar, 0.88, 0, 0, false),
+                        describe(avatar, 0.88, 0, 0, true)
                     ));
                 } finally {
                     avatar.recycle();
@@ -573,11 +765,17 @@ final class AvatarRecognitionEngine {
         List<Descriptor> square,
         List<Descriptor> circular,
         List<Descriptor> squareCompact,
-        List<Descriptor> circularCompact
+        List<Descriptor> circularCompact,
+        Descriptor squareAnchor,
+        Descriptor circularAnchor
     ) {}
     private record Library(String fingerprint, List<Reference> references) {}
     private record ScoredHero(int heroId, double score) {}
     private record ScoredReference(Reference reference, double score) {}
+    private record PickGeometry(double centerFromEdge, double side, double yOffset, double spread) {}
+    private record BanGeometry(double firstFromEdge, double spacing, double centerY, double side) {
+        private static final BanGeometry DEFAULT = new BanGeometry(0.130, 0.064, 0.045, 0.059);
+    }
 
     private static final class SlotMatch {
         final BpScreenLayout.Slot slot;
