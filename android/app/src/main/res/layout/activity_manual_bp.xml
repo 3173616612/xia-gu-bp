@@ -18,10 +18,10 @@
             android:layout_width="52dp"
             android:layout_height="42dp"
             android:background="@drawable/bg_outline"
-            android:text="‹"
+            android:text="返回"
             android:textAllCaps="false"
             android:textColor="@color/ink"
-            android:textSize="25sp" />
+            android:textSize="11sp" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -45,18 +45,18 @@
                 android:layout_marginTop="2dp"
                 android:text="正在同步天元实时数据"
                 android:textColor="@color/cyan"
-                android:textSize="11sp" />
+                android:textSize="10sp" />
         </LinearLayout>
 
         <Button
             android:id="@+id/manualClearButton"
-            android:layout_width="72dp"
+            android:layout_width="68dp"
             android:layout_height="42dp"
             android:background="@drawable/bg_outline"
             android:text="清空"
             android:textAllCaps="false"
             android:textColor="@color/muted"
-            android:textSize="12sp" />
+            android:textSize="11sp" />
     </LinearLayout>
 
     <ScrollView
@@ -70,9 +70,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingStart="16dp"
-            android:paddingTop="8dp"
-            android:paddingEnd="16dp"
+            android:paddingStart="12dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="12dp"
             android:paddingBottom="32dp">
 
             <LinearLayout
@@ -80,7 +80,146 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_card"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.12"
+                    android:text="DRAFT INPUT"
+                    android:textColor="@color/blue"
+                    android:textSize="9sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="录入当前阵容"
+                    android:textColor="@color/ink"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="左右同排对应分路，点击空位或头像即可选择、替换英雄"
+                    android:textColor="@color/muted_2"
+                    android:textSize="10sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="38dp"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="我方"
+                        android:textColor="@color/cyan"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="52dp"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:text="VS"
+                        android:textColor="@color/muted_2"
+                        android:textSize="9sp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="敌方"
+                        android:textColor="@color/danger"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/manualDraftRows"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="BAN 位"
+                            android:textColor="@color/gold"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="已 BAN 英雄不会进入推荐"
+                            android:textColor="@color/muted_2"
+                            android:textSize="9sp" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/addManualBanButton"
+                        android:layout_width="96dp"
+                        android:layout_height="42dp"
+                        android:background="@drawable/bg_outline"
+                        android:text="添加 BAN"
+                        android:textAllCaps="false"
+                        android:textColor="@color/ink"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:id="@+id/manualBanList"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card"
+                android:orientation="vertical"
+                android:padding="14dp">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -104,113 +243,11 @@
                 </HorizontalScrollView>
             </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/bg_card"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="我方已选"
-                    android:textColor="@color/cyan"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <LinearLayout
-                    android:id="@+id/manualAllyList"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="vertical" />
-
-                <Button
-                    android:id="@+id/addManualAllyButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="46dp"
-                    android:layout_marginTop="8dp"
-                    android:background="@drawable/bg_outline"
-                    android:text="＋ 添加我方英雄"
-                    android:textAllCaps="false"
-                    android:textColor="@color/ink" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/bg_card"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="敌方已选"
-                    android:textColor="@color/danger"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <LinearLayout
-                    android:id="@+id/manualEnemyList"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="vertical" />
-
-                <Button
-                    android:id="@+id/addManualEnemyButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="46dp"
-                    android:layout_marginTop="8dp"
-                    android:background="@drawable/bg_outline"
-                    android:text="＋ 添加敌方英雄"
-                    android:textAllCaps="false"
-                    android:textColor="@color/ink" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/bg_card"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="BAN 位"
-                    android:textColor="@color/gold"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <LinearLayout
-                    android:id="@+id/manualBanList"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="vertical" />
-
-                <Button
-                    android:id="@+id/addManualBanButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="46dp"
-                    android:layout_marginTop="8dp"
-                    android:background="@drawable/bg_outline"
-                    android:text="＋ 添加 BAN 英雄"
-                    android:textAllCaps="false"
-                    android:textColor="@color/ink" />
-            </LinearLayout>
-
             <Button
                 android:id="@+id/manualRecommendButton"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="14dp"
                 android:background="@drawable/bg_primary"
                 android:enabled="false"
                 android:text="生成英雄推荐"
@@ -224,10 +261,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:padding="12dp"
+                android:padding="11dp"
                 android:text="英雄数据准备完成后即可手动录入阵容。"
                 android:textColor="@color/muted"
-                android:textSize="12sp" />
+                android:textSize="11sp" />
 
             <LinearLayout
                 android:id="@+id/manualRecommendationSection"
@@ -236,13 +273,23 @@
                 android:layout_marginTop="4dp"
                 android:background="@drawable/bg_card"
                 android:orientation="vertical"
-                android:padding="16dp"
+                android:padding="14dp"
                 android:visibility="gone">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="推荐顺位"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.12"
+                    android:text="SMART PICKS"
+                    android:textColor="@color/blue"
+                    android:textSize="9sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="补位推荐"
                     android:textColor="@color/ink"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -250,10 +297,10 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:text="综合对敌关系、队友配合与当前梯度；负向关系会直接扣分。"
+                    android:layout_marginTop="4dp"
+                    android:text="结合全阵容对敌关系、友方配合与巅峰千强梯度"
                     android:textColor="@color/muted_2"
-                    android:textSize="11sp" />
+                    android:textSize="10sp" />
 
                 <LinearLayout
                     android:id="@+id/manualRecommendationList"

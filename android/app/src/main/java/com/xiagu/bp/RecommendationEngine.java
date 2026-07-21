@@ -102,10 +102,9 @@ final class RecommendationEngine {
                 ? String.valueOf(tierScore)
                 : candidate.tier + "/" + tierScore;
             String negativeNote = value.negativePenalty > 0 ? " · 负向-" + value.negativePenalty : "";
-            String confidence = sampleTotal >= 800 ? "高" : sampleTotal >= 180 ? "中" : "低";
             value.summary = "对敌 " + matchup.score + " · 配合 " + synergy.score
                 + " · 梯度 " + tierLabel + " · 提升 " + counterLift
-                + negativeNote + roleNote + " · 置信度" + confidence;
+                + negativeNote + roleNote;
             output.add(value);
         }
 

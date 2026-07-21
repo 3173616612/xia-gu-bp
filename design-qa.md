@@ -55,3 +55,24 @@ The combined 750 x 812 comparison keeps the logo, headings, body copy, cards, ch
 - [x] Verify 庄周 is recommendation number one for the supplied enemy lineup.
 
 final result: passed
+
+## Manual BP v1.7 web-style rebuild
+
+- source page capture: `docs/design-qa/manual-bp-reference.png`
+- Android implementation: `docs/design-qa/manual-bp-android.png`
+- combined draft comparison: `docs/design-qa/manual-bp-comparison.png`
+- source picker capture: `docs/design-qa/manual-picker-reference.png`
+- Android picker implementation: `docs/design-qa/manual-picker-android.png`
+- combined picker comparison: `docs/design-qa/manual-picker-comparison.png`
+- normalized viewport: 390 x 844 on both sides
+
+### Findings
+
+- The native draft keeps the source site's navy panels, blue/cyan accents, outlined slots, compact uppercase eyebrows, avatar-led hero cards, three-column picker, search field, lane filtering, role labels, and tier labels.
+- The Android draft intentionally places allies in the left column and enemies in the right column, with the same five lanes aligned row by row. This follows the requested phone workflow while preserving the source interaction model.
+- Algorithm weight percentages are intentionally omitted. Recommendation cards show only actionable matchup, synergy, tier, BAN, skip, and add-to-lineup controls.
+- Empty slots, selected portraits, replacement/removal, BAN exclusion, target-lane selection, live metadata, recommendation generation, and the sequential “不想玩” fallback were exercised in the emulator.
+- The hero picker returned 36 对抗路 candidates, displayed real bundled portraits, and selected 马超 into the left-side ally slot. A live recommendation run completed and exposed `设为 BAN`, `不想玩`, and `加入游走`; no confidence label was present.
+- No P0, P1, or P2 visual or interaction issues remain in the two combined comparisons. The native header and draft density are more compact than the marketing section above the web form, which is intentional for an in-app task screen.
+
+final result: passed

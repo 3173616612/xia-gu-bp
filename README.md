@@ -29,9 +29,13 @@ npm run build
 
 ## Android 悬浮助手
 
-原生 APK 同时支持手动自选阵容与悬浮识别：可录入敌我英雄、BAN 位和待补分路，也可用本地英雄头像匹配识别两侧已选阵容与顶部 BAN 位。推荐算法内置，英雄、梯度和四类关系直接读取天元之弈国内接口，不依赖公开站点；头像库随原始接口的 `avatarUrl` 指纹增量更新。构建、隐私和非标准阵容说明见 [`android/README.md`](android/README.md)。
+原生 APK 同时支持手动自选阵容与悬浮识别。手动 BP 按网页选将风格重做：我方在左、敌方在右，五条分路逐行对应；英雄池带真实头像、搜索、分路筛选和梯度标识，并支持 BAN、跳过候选和直接加入阵容。悬浮模式继续用本地英雄头像匹配识别两侧已选阵容与顶部 BAN 位。推荐算法内置，英雄、梯度和四类关系直接读取天元之弈国内接口，不依赖公开站点；头像库随原始接口的 `avatarUrl` 指纹增量更新。构建、隐私和非标准阵容说明见 [`android/README.md`](android/README.md)。
 
 ![峡谷 BP Android 主界面](docs/design-qa/xiagu-main-final.png)
+
+![手动 BP 左右分列选将](docs/design-qa/manual-bp-android.png)
+
+![手动 BP 英雄头像选择器](docs/design-qa/manual-picker-android.png)
 
 最新版为 **v1.7.0**，支持 Android 8.0 及以上。APK 在 Release 页面提供，SHA-256 同时写入发布说明。
 
