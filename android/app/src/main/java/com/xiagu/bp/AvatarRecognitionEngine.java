@@ -94,17 +94,28 @@ final class AvatarRecognitionEngine {
         Library library,
         boolean ourSideLeft
     ) {
-        BpScreenLayout layout = BpScreenLayout.create(frame.getWidth(), frame.getHeight());
+        BpScreenLayout layout = selectLayout(frame, library);
         Map<Integer, BpModels.Hero> heroesById = new HashMap<>();
         for (BpModels.Hero hero : heroes) heroesById.put(hero.id, hero);
 
         List<SlotMatch> acceptedPicks = new ArrayList<>();
         List<SlotMatch> acceptedBans = new ArrayList<>();
+        List<String> slotTrace = new ArrayList<>();
+        boolean obscureLeftBans = hasUpperLeftVideoOverlay(frame);
         int rejectedPicks = 0;
         int rejectedBans = 0;
         for (BpScreenLayout.Slot slot : layout.slots) {
             SlotMatch match = matchSlot(frame, slot, library);
-            if (!match.accepted) {
+            boolean accepted = match.accepted
+                && !(obscureLeftBans && slot.kind == BpScreenLayout.Kind.LEFT_BAN);
+            BpModels.Hero tracedHero = heroesById.get(match.heroId);
+            slotTrace.add(
+                slot.kind + "[" + slot.index + "]="
+                    + (tracedHero == null ? match.heroId : tracedHero.name)
+                    + (accepted ? " ✓" : " ×")
+                    + String.format(Locale.ROOT, " %.3f/%.3f", match.score, match.margin)
+            );
+            if (!accepted) {
                 if (slot.isBan()) rejectedBans++;
                 else rejectedPicks++;
                 continue;
@@ -121,6 +132,8 @@ final class AvatarRecognitionEngine {
         }
 
         BpModels.DetectedLineup output = new BpModels.DetectedLineup();
+        output.layoutProfile = layout.profile.name();
+        output.slotTrace.addAll(slotTrace);
         double confidenceTotal = 0;
         int confidenceCount = 0;
         boolean hasMultiRole = false;
@@ -152,6 +165,9 @@ final class AvatarRecognitionEngine {
         }
 
         output.confidence = confidenceCount == 0 ? 0 : confidenceTotal / confidenceCount;
+        if (obscureLeftBans) {
+            output.issues.add("检测到左上视频水印，已忽略被遮挡的左侧 BAN 槽位。");
+        }
         if (output.allies.isEmpty() && output.enemies.isEmpty()) {
             output.issues.add("没有在两侧已选槽识别到高置信度头像，请确认处于横屏 BP 界面。");
         }
@@ -166,6 +182,72 @@ final class AvatarRecognitionEngine {
             output.issues.add("当前为我方 " + output.allies.size() + " 人、敌方 " + output.enemies.size() + " 人；按画面现有阵容计算，不强制补齐五路。");
         }
         return output;
+    }
+
+    private static boolean hasUpperLeftVideoOverlay(Bitmap frame) {
+        int limitX = Math.max(1, Math.round(frame.getWidth() * 0.38f));
+        int limitY = Math.max(1, Math.round(frame.getHeight() * 0.11f));
+        int step = Math.max(2, frame.getHeight() / 420);
+        int whitePixels = 0;
+        int sampled = 0;
+        for (int y = 0; y < limitY; y += step) {
+            for (int x = 0; x < limitX; x += step) {
+                int color = frame.getPixel(x, y);
+                int red = Color.red(color);
+                int green = Color.green(color);
+                int blue = Color.blue(color);
+                int maximum = Math.max(red, Math.max(green, blue));
+                int minimum = Math.min(red, Math.min(green, blue));
+                if (maximum > 210 && maximum - minimum < 35) whitePixels++;
+                sampled++;
+            }
+        }
+        return sampled > 0 && (double) whitePixels / sampled > 0.020;
+    }
+
+    private static BpScreenLayout selectLayout(Bitmap frame, Library library) {
+        List<BpScreenLayout> candidates = BpScreenLayout.candidates(frame.getWidth(), frame.getHeight());
+        BpScreenLayout bestLayout = candidates.get(0);
+        double bestQuality = Double.NEGATIVE_INFINITY;
+        for (BpScreenLayout candidate : candidates) {
+            double quality = layoutQuality(frame, candidate, library);
+            if (quality > bestQuality) {
+                bestQuality = quality;
+                bestLayout = candidate;
+            }
+        }
+        return bestLayout;
+    }
+
+    private static double layoutQuality(Bitmap frame, BpScreenLayout layout, Library library) {
+        double quality = 0;
+        int strongPortraits = 0;
+        for (BpScreenLayout.Slot slot : layout.slots) {
+            if (slot.isBan()) continue;
+            Bitmap crop = Bitmap.createBitmap(
+                frame,
+                slot.crop.left,
+                slot.crop.top,
+                slot.crop.width(),
+                slot.crop.height()
+            );
+            List<Descriptor> queries;
+            try {
+                queries = descriptors(crop, false, false);
+            } finally {
+                crop.recycle();
+            }
+            Descriptor stats = queries.get(1);
+            if (stats.contrast < 0.105) continue;
+
+            double bestScore = -1;
+            for (Reference reference : library.references) {
+                bestScore = Math.max(bestScore, bestSimilarity(queries, reference.squareCompact));
+            }
+            quality += Math.max(0, bestScore - 0.35);
+            if (bestScore >= 0.50) strongPortraits++;
+        }
+        return quality + strongPortraits * 0.05;
     }
 
     private static SlotMatch matchSlot(Bitmap frame, BpScreenLayout.Slot slot, Library library) {
@@ -207,7 +289,7 @@ final class AvatarRecognitionEngine {
         double margin = first.score - second;
         Descriptor stats = fullQueries.get(4);
         double minimumScore = 0.50;
-        double minimumMargin = slot.isBan() ? 0.014 : 0.035;
+        double minimumMargin = slot.isBan() ? 0.009 : 0.035;
         boolean accepted = stats.contrast >= 0.105
             && first.score >= minimumScore
             && margin >= minimumMargin;

@@ -47,8 +47,10 @@ final class BpModels {
         final List<Hero> enemies = new ArrayList<>();
         final List<Hero> bans = new ArrayList<>();
         final List<String> issues = new ArrayList<>();
+        final List<String> slotTrace = new ArrayList<>();
         String rawText = "";
         String suggestedLane;
+        String layoutProfile = "";
         double confidence;
     }
 

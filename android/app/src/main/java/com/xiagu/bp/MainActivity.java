@@ -35,6 +35,7 @@ public final class MainActivity extends Activity {
     private WebView webView;
     private Button assistantTab;
     private Button webTab;
+    private Button startAssistantButton;
     private TextView overlayPermissionStatus;
     private TextView capturePermissionStatus;
     private TextView mainStatus;
@@ -42,6 +43,7 @@ public final class MainActivity extends Activity {
     private RadioGroup laneGroup;
     private RadioGroup teamSideGroup;
     private boolean webLoaded;
+    private final XiaGuBpApplication.Listener bootstrapListener = this::showBootstrapState;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,7 +55,9 @@ public final class MainActivity extends Activity {
         setupWebView();
         setupActions();
         refreshPermissionState();
-        syncDataStatus();
+        startAssistantButton.setEnabled(false);
+        startAssistantButton.setText("正在初始化头像库…");
+        application().addBootstrapListener(bootstrapListener);
 
         if (getIntent().getBooleanExtra(EXTRA_OPEN_WEB, false)) showWeb();
     }
@@ -63,6 +67,7 @@ public final class MainActivity extends Activity {
         webView = findViewById(R.id.webView);
         assistantTab = findViewById(R.id.assistantTab);
         webTab = findViewById(R.id.webTab);
+        startAssistantButton = findViewById(R.id.startAssistantButton);
         overlayPermissionStatus = findViewById(R.id.overlayPermissionStatus);
         capturePermissionStatus = findViewById(R.id.capturePermissionStatus);
         mainStatus = findViewById(R.id.mainStatus);
@@ -73,7 +78,7 @@ public final class MainActivity extends Activity {
 
     private void setupActions() {
         findViewById(R.id.grantOverlayButton).setOnClickListener(view -> requestOverlayPermission());
-        findViewById(R.id.startAssistantButton).setOnClickListener(view -> startAssistantFlow());
+        startAssistantButton.setOnClickListener(view -> startAssistantFlow());
         assistantTab.setOnClickListener(view -> showControls());
         webTab.setOnClickListener(view -> showWeb());
     }
@@ -211,30 +216,40 @@ public final class MainActivity extends Activity {
         overlayPermissionStatus.setTextColor(getColor(granted ? R.color.cyan : R.color.warning));
     }
 
-    private void syncDataStatus() {
-        dataStatus.setText("巅峰千强 · 正在同步英雄库");
-        BpApiClient.loadMeta(new BpApiClient.Callback<>() {
-            @Override
-            public void onSuccess(java.util.List<BpModels.Hero> heroes) {
-                dataStatus.setText("巅峰千强 · 正在建立 " + heroes.size() + " 位头像库");
-                AvatarRecognitionEngine.prewarm(MainActivity.this, heroes, new AvatarRecognitionEngine.PrewarmCallback() {
-                    @Override
-                    public void onReady(int count) {
-                        dataStatus.setText("巅峰千强 · 实时头像 " + count + " 位");
-                    }
+    private XiaGuBpApplication application() {
+        return (XiaGuBpApplication) getApplication();
+    }
 
-                    @Override
-                    public void onError(String message) {
-                        dataStatus.setText("巅峰千强 · 头像库待联网补齐");
-                    }
-                });
+    private void showBootstrapState(XiaGuBpApplication.BootstrapState state) {
+        switch (state.phase()) {
+            case SYNCING -> {
+                dataStatus.setText("巅峰千强 · 软件启动同步中");
+                startAssistantButton.setEnabled(false);
+                startAssistantButton.setText("正在同步英雄库…");
             }
+            case BUILDING -> {
+                dataStatus.setText("巅峰千强 · 启动预热 " + state.heroCount() + " 位");
+                startAssistantButton.setEnabled(false);
+                startAssistantButton.setText("正在初始化头像库…");
+            }
+            case READY -> {
+                dataStatus.setText("巅峰千强 · 实时头像 " + state.heroCount() + " 位 · 已预热");
+                startAssistantButton.setEnabled(true);
+                startAssistantButton.setText("启动悬浮助手");
+            }
+            case ERROR -> {
+                dataStatus.setText("巅峰千强 · 启动初始化失败");
+                mainStatus.setText("头像库未完成初始化，请联网后重新启动应用。\n" + state.message());
+                startAssistantButton.setEnabled(false);
+                startAssistantButton.setText("头像库尚未就绪");
+            }
+        }
+    }
 
-            @Override
-            public void onError(String message) {
-                dataStatus.setText("巅峰千强 · 暂时离线");
-            }
-        });
+    @Override
+    protected void onDestroy() {
+        application().removeBootstrapListener(bootstrapListener);
+        super.onDestroy();
     }
 
     @Override

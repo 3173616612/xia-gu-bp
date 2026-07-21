@@ -45,6 +45,8 @@ public final class AvatarFixtureActivity extends Activity {
                             String report = "allies=" + names(lineup.allies)
                                 + "\nenemies=" + names(lineup.enemies)
                                 + "\nbans=" + names(lineup.bans)
+                                + "\nlayout=" + lineup.layoutProfile
+                                + "\nslots=" + String.join(" | ", lineup.slotTrace)
                                 + "\nconfidence=" + lineup.confidence
                                 + "\nissues=" + String.join(" | ", lineup.issues);
                             show(report);
@@ -69,6 +71,13 @@ public final class AvatarFixtureActivity extends Activity {
 
     private void show(String value) {
         Log.i(TAG, value.replace('\n', ';'));
+        try (java.io.FileOutputStream stream = new java.io.FileOutputStream(
+            new java.io.File(getExternalFilesDir(null), "avatar_fixture_report.txt")
+        )) {
+            stream.write(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (Exception error) {
+            Log.e(TAG, "cannot write fixture report", error);
+        }
         output.setText(value);
     }
 

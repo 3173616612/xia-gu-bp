@@ -21,12 +21,13 @@ public final class BpScreenLayoutTest {
         );
 
         for (int[] size : sizes) {
-            BpScreenLayout layout = BpScreenLayout.create(size[0], size[1]);
-            assertEquals(20, layout.slots.size());
-            for (BpScreenLayout.Slot slot : layout.slots) {
-                assertFalse(size[0] + "x" + size[1], slot.crop.intersects(layout.candidateExclusion));
-                assertTrue(slot.crop.left >= 0 && slot.crop.top >= 0);
-                assertTrue(slot.crop.right <= size[0] && slot.crop.bottom <= size[1]);
+            for (BpScreenLayout layout : BpScreenLayout.candidates(size[0], size[1])) {
+                assertEquals(20, layout.slots.size());
+                for (BpScreenLayout.Slot slot : layout.slots) {
+                    assertFalse(size[0] + "x" + size[1], slot.crop.intersects(layout.candidateExclusion));
+                    assertTrue(slot.crop.left >= 0 && slot.crop.top >= 0);
+                    assertTrue(slot.crop.right <= size[0] && slot.crop.bottom <= size[1]);
+                }
             }
         }
     }

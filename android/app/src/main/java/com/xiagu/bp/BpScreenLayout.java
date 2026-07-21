@@ -14,6 +14,24 @@ import java.util.List;
 final class BpScreenLayout {
     enum Kind { LEFT_PICK, RIGHT_PICK, LEFT_BAN, RIGHT_BAN }
 
+    enum Profile {
+        COMPACT(0.105, 0.076, 0.064, 0.060),
+        MEDIUM(0.145, 0.108, 0.061, 0.063),
+        WIDE(0.185, 0.159, 0.067, 0.066);
+
+        final double pickCenterFromEdge;
+        final double firstBanFromEdge;
+        final double banSpacing;
+        final double banSide;
+
+        Profile(double pickCenterFromEdge, double firstBanFromEdge, double banSpacing, double banSide) {
+            this.pickCenterFromEdge = pickCenterFromEdge;
+            this.firstBanFromEdge = firstBanFromEdge;
+            this.banSpacing = banSpacing;
+            this.banSide = banSide;
+        }
+    }
+
     static final class IntRect {
         final int left;
         final int top;
@@ -53,36 +71,47 @@ final class BpScreenLayout {
     }
 
     private static final double[] PICK_Y = {0.171, 0.330, 0.491, 0.652, 0.814};
-    private static final double[] BAN_X_FROM_EDGE_IN_HEIGHTS = {0.159, 0.226, 0.293, 0.360, 0.427};
-
     final int width;
     final int height;
+    final Profile profile;
     final IntRect candidateExclusion;
     final List<Slot> slots;
 
-    private BpScreenLayout(int width, int height, IntRect candidateExclusion, List<Slot> slots) {
+    private BpScreenLayout(int width, int height, Profile profile, IntRect candidateExclusion, List<Slot> slots) {
         this.width = width;
         this.height = height;
+        this.profile = profile;
         this.candidateExclusion = candidateExclusion;
         this.slots = Collections.unmodifiableList(slots);
     }
 
     static BpScreenLayout create(int width, int height) {
+        return create(width, height, Profile.WIDE);
+    }
+
+    static List<BpScreenLayout> candidates(int width, int height) {
+        List<BpScreenLayout> output = new ArrayList<>();
+        for (Profile profile : Profile.values()) output.add(create(width, height, profile));
+        return output;
+    }
+
+    static BpScreenLayout create(int width, int height, Profile profile) {
         if (width <= 0 || height <= 0) throw new IllegalArgumentException("invalid screen size");
 
         List<Slot> slots = new ArrayList<>(20);
         int pickSide = Math.max(24, (int) Math.round(height * 0.124));
-        int pickCenterFromEdge = (int) Math.round(height * 0.185);
+        int pickCenterFromEdge = (int) Math.round(height * profile.pickCenterFromEdge);
         for (int index = 0; index < PICK_Y.length; index++) {
             int centerY = (int) Math.round(height * PICK_Y[index]);
             slots.add(new Slot(Kind.LEFT_PICK, index, square(width, height, pickCenterFromEdge, centerY, pickSide), false));
             slots.add(new Slot(Kind.RIGHT_PICK, index, square(width, height, width - pickCenterFromEdge, centerY, pickSide), false));
         }
 
-        int banSide = Math.max(18, (int) Math.round(height * 0.066));
+        int banSide = Math.max(18, (int) Math.round(height * profile.banSide));
         int banCenterY = (int) Math.round(height * 0.045);
-        for (int index = 0; index < BAN_X_FROM_EDGE_IN_HEIGHTS.length; index++) {
-            int fromEdge = (int) Math.round(height * BAN_X_FROM_EDGE_IN_HEIGHTS[index]);
+        for (int index = 0; index < 5; index++) {
+            double distance = profile.firstBanFromEdge + profile.banSpacing * index;
+            int fromEdge = (int) Math.round(height * distance);
             slots.add(new Slot(Kind.LEFT_BAN, index, square(width, height, fromEdge, banCenterY, banSide), true));
             slots.add(new Slot(Kind.RIGHT_BAN, index, square(width, height, width - fromEdge, banCenterY, banSide), true));
         }
@@ -98,7 +127,7 @@ final class BpScreenLayout {
                 throw new IllegalStateException("recognition slot overlaps candidate browser");
             }
         }
-        return new BpScreenLayout(width, height, exclusion, slots);
+        return new BpScreenLayout(width, height, profile, exclusion, slots);
     }
 
     private static IntRect square(int width, int height, int centerX, int centerY, int side) {

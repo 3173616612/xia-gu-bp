@@ -39,6 +39,8 @@ The combined 750 x 812 comparison keeps the logo, headings, body copy, cards, ch
 - Overlay bubble expanded in landscape, then hid for capture and returned after local recognition.
 - The supplied 2559×1186 real BP screenshot detected the six actually selected portraits as 百里玄策、嫦娥、孙权、刘邦、韩信、少司缘; four empty pick slots were rejected.
 - Nine occupied BAN slots were detected (seven unique heroes after legitimate duplicate bans); the single empty top-right BAN slot was rejected by the confidence and contrast gates.
+- A second 2555×1250 replay screenshot selected the COMPACT profile and detected all seven visible picks: 墨子、赵云、百里守约、沈梦溪、芈月、曹操、苍. The five clear right-side BAN portraits were detected as 马超、盾山、元流之子(辅助)、裴擒虎、阿轲; the five left-side BAN crops covered by a Bilibili replay watermark were deliberately suppressed.
+- App-process startup now performs the 131-portrait prewarm before enabling the floating-assistant CTA. After prewarm, the second screenshot completed recognition in about 3.4 seconds in the emulator; the earlier WIDE fixture completed in about 2.8 seconds and retained its previous correct result.
 - The central hero browser is a hard exclusion rectangle. Layout tests cover 16:9 through 20:9 and assert that none of the 20 recognition slots intersects it.
 - The supplied enemy example ranked 庄周 first using live matchup, ally synergy, situational lift, and compressed tier scoring.
 - Partial/non-standard team counts continued scoring without synthetic role filling; multi-position heroes were soft-weighted.
