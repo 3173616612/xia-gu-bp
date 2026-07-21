@@ -37,7 +37,7 @@
                     android:id="@+id/overlayMode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="巅峰千强 · OCR 待命"
+                    android:text="巅峰千强 · 头像识别待命"
                     android:textColor="@color/cyan"
                     android:textSize="11sp" />
             </LinearLayout>
@@ -133,7 +133,7 @@
             android:layout_height="50dp"
             android:layout_marginTop="10dp"
             android:background="@drawable/bg_primary"
-            android:text="识别当前阵容与 BAN 位"
+            android:text="识别两侧阵容与顶部 BAN 位"
             android:textAllCaps="false"
             android:textColor="@color/ink"
             android:textSize="14sp"

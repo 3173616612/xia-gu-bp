@@ -85,7 +85,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:lineSpacingExtra="4dp"
-                    android:text="悬浮窗会在截图前自动隐藏，通过中文 OCR 识别英雄与 BAN 位，再按实时对位、阵容提升、队友配合和梯度生成推荐。"
+                    android:text="悬浮窗会在截图前自动隐藏，只识别两侧已选头像和顶部 BAN 头像；中央候选英雄区始终排除。分路文字识别失败时可手动切换。"
                     android:textColor="@color/muted"
                     android:textSize="14sp" />
 
@@ -145,7 +145,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="默认识别方式"
+                        android:text="头像识别设置"
                         android:textColor="@color/ink"
                         android:textSize="18sp"
                         android:textStyle="bold" />

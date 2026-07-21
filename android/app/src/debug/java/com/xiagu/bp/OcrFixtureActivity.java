@@ -8,7 +8,7 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-/** A debug-only BP screen used to verify screenshot capture and Chinese OCR end to end. */
+/** Legacy debug screen kept for verifying optional lane-text OCR and screenshot capture. */
 public final class OcrFixtureActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {

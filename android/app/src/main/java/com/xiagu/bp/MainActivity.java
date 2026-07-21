@@ -164,7 +164,7 @@ public final class MainActivity extends Activity {
         }
         MediaProjectionManager manager = getSystemService(MediaProjectionManager.class);
         capturePermissionStatus.setText("屏幕识别权限 · 等待系统确认");
-        mainStatus.setText("请在系统弹窗中允许一次屏幕共享；画面只在设备内用于 OCR。 ");
+        mainStatus.setText("请在系统弹窗中允许一次屏幕共享；英雄头像只在设备内识别。 ");
         Intent captureIntent = Build.VERSION.SDK_INT >= 34
             ? manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
             : manager.createScreenCaptureIntent();
@@ -216,7 +216,18 @@ public final class MainActivity extends Activity {
         BpApiClient.loadMeta(new BpApiClient.Callback<>() {
             @Override
             public void onSuccess(java.util.List<BpModels.Hero> heroes) {
-                dataStatus.setText("巅峰千强 · 实时英雄 " + heroes.size() + " 名");
+                dataStatus.setText("巅峰千强 · 正在建立 " + heroes.size() + " 位头像库");
+                AvatarRecognitionEngine.prewarm(MainActivity.this, heroes, new AvatarRecognitionEngine.PrewarmCallback() {
+                    @Override
+                    public void onReady(int count) {
+                        dataStatus.setText("巅峰千强 · 实时头像 " + count + " 位");
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        dataStatus.setText("巅峰千强 · 头像库待联网补齐");
+                    }
+                });
             }
 
             @Override

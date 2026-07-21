@@ -36,7 +36,6 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import com.google.mlkit.vision.common.InputImage;
-import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
@@ -80,7 +79,7 @@ public final class OverlayCaptureService extends Service {
     private ImageReader imageReader;
     private HandlerThread captureThread;
     private Handler captureHandler;
-    private TextRecognizer recognizer;
+    private TextRecognizer laneRecognizer;
     private volatile boolean captureRequested;
     private int captureWidth;
     private int captureHeight;
@@ -90,7 +89,7 @@ public final class OverlayCaptureService extends Service {
     public void onCreate() {
         super.onCreate();
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        recognizer = TextRecognition.getClient(new ChineseTextRecognizerOptions.Builder().build());
+        laneRecognizer = TextRecognition.getClient(new ChineseTextRecognizerOptions.Builder().build());
         captureThread = new HandlerThread("bp-screen-capture");
         captureThread.start();
         captureHandler = new Handler(captureThread.getLooper());
@@ -153,7 +152,7 @@ public final class OverlayCaptureService extends Service {
             "屏幕识别服务",
             NotificationManager.IMPORTANCE_LOW
         );
-        channel.setDescription("仅在用户点击悬浮按钮时截取一帧并进行本地 OCR");
+        channel.setDescription("仅在用户点击悬浮按钮时截取一帧并进行本地头像识别");
         getSystemService(NotificationManager.class).createNotificationChannel(channel);
     }
 
@@ -351,7 +350,7 @@ public final class OverlayCaptureService extends Service {
         replacement.setOnImageAvailableListener(this::onImageAvailable, captureHandler);
         if (virtualDisplay == null) {
             virtualDisplay = projection.createVirtualDisplay(
-                "XiaGuBPOcr",
+                "XiaGuBPAvatar",
                 width,
                 height,
                 dpi,
@@ -383,8 +382,8 @@ public final class OverlayCaptureService extends Service {
         } finally {
             image.close();
         }
-        main.post(() -> restorePanel("截图完成，正在进行中文 OCR…"));
-        runOcr(bitmap);
+        main.post(() -> restorePanel("截图完成，正在定位两侧已选与顶部 BAN 槽…"));
+        detectLaneThenRecognize(bitmap);
     }
 
     private Bitmap imageToBitmap(Image image, int width, int height) {
@@ -400,38 +399,61 @@ public final class OverlayCaptureService extends Service {
         return cropped;
     }
 
-    private void runOcr(Bitmap bitmap) {
-        InputImage image = InputImage.fromBitmap(bitmap, 0);
-        recognizer.process(image)
+    private void detectLaneThenRecognize(Bitmap bitmap) {
+        int left = Math.max(0, Math.round(bitmap.getWidth() * 0.24f));
+        int top = 0;
+        int width = Math.min(bitmap.getWidth() - left, Math.round(bitmap.getWidth() * 0.52f));
+        int height = Math.min(bitmap.getHeight(), Math.max(1, Math.round(bitmap.getHeight() * 0.16f)));
+        Bitmap laneStrip = Bitmap.createBitmap(bitmap, left, top, width, height);
+        InputImage image = InputImage.fromBitmap(laneStrip, 0);
+        laneRecognizer.process(image)
             .addOnSuccessListener(text -> {
-                bitmap.recycle();
-                overlayStatus.setText("OCR 完成，正在同步实时英雄数据…");
-                BpApiClient.loadMeta(new BpApiClient.Callback<>() {
-                    @Override
-                    public void onSuccess(List<BpModels.Hero> heroes) {
-                        handleRecognizedText(text, heroes, captureWidth, captureHeight);
-                    }
-
-                    @Override
-                    public void onError(String message) {
-                        finishWithError(message);
-                    }
-                });
+                laneStrip.recycle();
+                recognizePortraits(bitmap, LaneTextParser.detect(text));
             })
             .addOnFailureListener(error -> {
-                bitmap.recycle();
-                finishWithError("OCR 识别失败，请保持 BP 画面清晰后重试。");
+                laneStrip.recycle();
+                // Lane text is optional. Portrait recognition and the manual lane switch still work.
+                recognizePortraits(bitmap, null);
             });
     }
 
-    private void handleRecognizedText(Text text, List<BpModels.Hero> heroes, int width, int height) {
-        BpModels.DetectedLineup lineup = OcrHeroParser.parse(
-            text,
-            heroes,
-            width,
-            height,
-            AppPrefs.ourSideLeft(this)
-        );
+    private void recognizePortraits(Bitmap bitmap, String suggestedLane) {
+        overlayStatus.setText("正在同步 131 位英雄头像库；中央候选区已排除…");
+        BpApiClient.loadMeta(new BpApiClient.Callback<>() {
+            @Override
+            public void onSuccess(List<BpModels.Hero> heroes) {
+                AvatarRecognitionEngine.recognize(
+                    OverlayCaptureService.this,
+                    bitmap,
+                    heroes,
+                    AppPrefs.ourSideLeft(OverlayCaptureService.this),
+                    new AvatarRecognitionEngine.Callback() {
+                        @Override
+                        public void onReady(BpModels.DetectedLineup lineup) {
+                            bitmap.recycle();
+                            lineup.suggestedLane = suggestedLane;
+                            handleRecognizedLineup(lineup, heroes);
+                        }
+
+                        @Override
+                        public void onError(String message) {
+                            bitmap.recycle();
+                            finishWithError(message);
+                        }
+                    }
+                );
+            }
+
+            @Override
+            public void onError(String message) {
+                bitmap.recycle();
+                finishWithError(message);
+            }
+        });
+    }
+
+    private void handleRecognizedLineup(BpModels.DetectedLineup lineup, List<BpModels.Hero> heroes) {
         if (lineup.suggestedLane != null) {
             AppPrefs.setLane(this, lineup.suggestedLane);
             setupLaneButtons();
@@ -451,7 +473,7 @@ public final class OverlayCaptureService extends Service {
                     AppPrefs.lane(OverlayCaptureService.this)
                 );
                 showRecommendations(recommendations);
-                overlayStatus.setText("识别完成 · " + AppPrefs.lane(OverlayCaptureService.this) + "推荐已更新");
+                overlayStatus.setText("头像识别完成 · " + AppPrefs.lane(OverlayCaptureService.this) + "推荐已更新");
                 scanButton.setEnabled(true);
             }
 
@@ -535,7 +557,7 @@ public final class OverlayCaptureService extends Service {
         if (virtualDisplay != null) virtualDisplay.release();
         if (imageReader != null) imageReader.close();
         if (projection != null) projection.stop();
-        if (recognizer != null) recognizer.close();
+        if (laneRecognizer != null) laneRecognizer.close();
         if (captureThread != null) captureThread.quitSafely();
         super.onDestroy();
     }

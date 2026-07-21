@@ -24,3 +24,7 @@ npm run build
 ```
 
 上游数据仅供个人学习和 BP 参考；本项目与腾讯游戏、天美工作室无关联。
+
+## Android 悬浮助手
+
+原生 APK 使用本地英雄头像匹配识别两侧已选阵容与顶部 BAN 位，中央候选区硬排除；头像库随实时接口的 `avatarUrl` 指纹增量更新。构建、隐私和非标准阵容说明见 [`android/README.md`](android/README.md)。
