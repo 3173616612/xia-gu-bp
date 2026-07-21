@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ink">#F5F8FF</color>
-    <color name="muted">#93A3C2</color>
-    <color name="muted_2">#667695</color>
-    <color name="background">#07101F</color>
-    <color name="panel">#0E1728</color>
-    <color name="panel_2">#121D32</color>
-    <color name="line">#263A5D</color>
-    <color name="blue">#5B8DFF</color>
-    <color name="cyan">#55E4DF</color>
+    <color name="muted">#9CAECD</color>
+    <color name="muted_2">#6F82A4</color>
+    <color name="background">#060D19</color>
+    <color name="panel">#0C1729</color>
+    <color name="panel_2">#112039</color>
+    <color name="line">#223B61</color>
+    <color name="blue">#6495FF</color>
+    <color name="cyan">#4CE1D7</color>
+    <color name="gold">#F2C86A</color>
+    <color name="gold_dark">#9C6E22</color>
+    <color name="gold_surface">#2A2114</color>
     <color name="danger">#FF6A7E</color>
     <color name="warning">#FFD074</color>
 </resources>

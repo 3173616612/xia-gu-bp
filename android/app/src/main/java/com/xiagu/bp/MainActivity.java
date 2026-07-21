@@ -2,9 +2,12 @@ package com.xiagu.bp;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Dialog;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.media.projection.MediaProjectionManager;
 import android.media.projection.MediaProjectionConfig;
 import android.net.Uri;
@@ -13,6 +16,8 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -59,6 +64,39 @@ public final class MainActivity extends Activity {
     private void setupActions() {
         findViewById(R.id.grantOverlayButton).setOnClickListener(view -> requestOverlayPermission());
         startAssistantButton.setOnClickListener(view -> startAssistantFlow());
+        findViewById(R.id.sourceLink).setOnClickListener(view ->
+            openUri(Uri.parse("https://tianyuanzhiyi.com/"), "未找到可打开网页的应用。")
+        );
+        findViewById(R.id.authorLink).setOnClickListener(view ->
+            openUri(Uri.parse("mailto:3173616612@qq.com"), "未找到可发送邮件的应用。")
+        );
+        findViewById(R.id.donateButton).setOnClickListener(view -> showDonationDialog());
+    }
+
+    private void openUri(Uri uri, String failureMessage) {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, uri));
+        } catch (ActivityNotFoundException exception) {
+            mainStatus.setText(failureMessage);
+        }
+    }
+
+    private void showDonationDialog() {
+        Dialog dialog = new Dialog(this);
+        dialog.setContentView(R.layout.dialog_donation);
+        dialog.setCanceledOnTouchOutside(true);
+        dialog.findViewById(R.id.closeDonationButton).setOnClickListener(view -> dialog.dismiss());
+        dialog.show();
+
+        Window window = dialog.getWindow();
+        if (window == null) return;
+        window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        WindowManager.LayoutParams attributes = window.getAttributes();
+        attributes.dimAmount = 0.76f;
+        window.setAttributes(attributes);
+        int availableWidth = getResources().getDisplayMetrics().widthPixels - dp(32);
+        window.setLayout(Math.min(availableWidth, dp(390)), WindowManager.LayoutParams.WRAP_CONTENT);
     }
 
     private void setupTeamSide() {
@@ -162,22 +200,22 @@ public final class MainActivity extends Activity {
     private void showBootstrapState(XiaGuBpApplication.BootstrapState state) {
         switch (state.phase()) {
             case SYNCING -> {
-                dataStatus.setText("天元直连 · 软件启动同步头像");
+                dataStatus.setText("实时数据 · 正在同步英雄库");
                 startAssistantButton.setEnabled(false);
                 startAssistantButton.setText("正在同步英雄库…");
             }
             case BUILDING -> {
-                dataStatus.setText("天元直连 · 启动预热 " + state.heroCount() + " 位");
+                dataStatus.setText("头像识别 · 正在准备 " + state.heroCount() + " 位英雄");
                 startAssistantButton.setEnabled(false);
                 startAssistantButton.setText("正在初始化头像库…");
             }
             case READY -> {
-                dataStatus.setText("天元直连 · " + state.heroCount() + " 位 · 本地算法就绪");
+                dataStatus.setText("实时数据已就绪 · " + state.heroCount() + " 位英雄");
                 startAssistantButton.setEnabled(true);
                 startAssistantButton.setText("启动悬浮助手");
             }
             case ERROR -> {
-                dataStatus.setText("天元直连 · 启动初始化失败");
+                dataStatus.setText("数据初始化失败");
                 mainStatus.setText("头像库未完成初始化，请联网后重新启动应用。\n" + state.message());
                 startAssistantButton.setEnabled(false);
                 startAssistantButton.setText("头像库尚未就绪");

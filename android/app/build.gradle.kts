@@ -1,5 +1,19 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
+}
+
+val releaseSigningPropertiesFile = rootProject.file("../work/signing/keystore.properties")
+val releaseKeystoreFile = rootProject.file("../work/signing/xiagu-release.jks")
+val releaseSigningProperties = Properties().apply {
+    if (releaseSigningPropertiesFile.isFile) {
+        releaseSigningPropertiesFile.inputStream().use(::load)
+    }
+}
+val releaseSigningValue = { name: String ->
+    releaseSigningProperties.getProperty(name)
+        ?: error("Missing $name in ${releaseSigningPropertiesFile.path}")
 }
 
 android {
@@ -10,16 +24,29 @@ android {
         applicationId = "com.xiagu.bp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.4.0"
+        versionCode = 6
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "android.app.Instrumentation"
     }
 
+    signingConfigs {
+        create("release") {
+            check(releaseKeystoreFile.isFile) {
+                "Release keystore not found at ${releaseKeystoreFile.path}"
+            }
+            storeFile = releaseKeystoreFile
+            storePassword = releaseSigningValue("storePassword")
+            keyAlias = releaseSigningValue("keyAlias")
+            keyPassword = releaseSigningValue("keyPassword")
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
