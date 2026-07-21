@@ -1,6 +1,7 @@
 package com.xiagu.bp;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -16,10 +17,21 @@ final class RecommendationEngine {
         BpModels.DetectedLineup lineup,
         String targetLane
     ) {
+        return recommend(roster, analyses, lineup, targetLane, Collections.emptySet());
+    }
+
+    static List<BpModels.Recommendation> recommend(
+        List<BpModels.Hero> roster,
+        Map<Integer, BpModels.Analysis> analyses,
+        BpModels.DetectedLineup lineup,
+        String targetLane,
+        Set<Integer> additionalExcludedHeroIds
+    ) {
         Set<Integer> excluded = new HashSet<>();
         for (BpModels.Hero hero : lineup.allies) excluded.add(hero.id);
         for (BpModels.Hero hero : lineup.enemies) excluded.add(hero.id);
         for (BpModels.Hero hero : lineup.bans) excluded.add(hero.id);
+        excluded.addAll(additionalExcludedHeroIds);
 
         List<BpModels.Recommendation> output = new ArrayList<>();
         for (BpModels.Hero candidate : roster) {

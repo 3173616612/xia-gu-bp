@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +92,42 @@ public final class RecommendationEngineTest {
         assertTrue(recommendations.get(0).summary.contains("对敌"));
         assertTrue(recommendations.get(0).summary.contains("配合"));
         assertTrue(recommendations.get(0).summary.contains("梯度"));
+    }
+
+    @Test
+    public void dismissedHeroIsRemovedAndNextRankedHeroMovesUp() {
+        List<BpModels.Hero> roster = new ArrayList<>(List.of(
+            hero(1, "第一顺位", 95, "游走", "游走"),
+            hero(2, "第二顺位", 80, "游走", "游走"),
+            hero(3, "第三顺位", 65, "游走", "游走"),
+            hero(4, "第四顺位", 50, "游走", "游走")
+        ));
+        BpModels.DetectedLineup lineup = new BpModels.DetectedLineup();
+        Map<Integer, BpModels.Analysis> analyses = new LinkedHashMap<>();
+
+        List<BpModels.Recommendation> original = RecommendationEngine.recommend(
+            roster,
+            analyses,
+            lineup,
+            "游走"
+        );
+        assertEquals("第一顺位", original.get(0).hero.name);
+        assertEquals("第二顺位", original.get(1).hero.name);
+        assertEquals("第三顺位", original.get(2).hero.name);
+
+        HashSet<Integer> dismissed = new HashSet<>();
+        dismissed.add(original.get(0).hero.id);
+        List<BpModels.Recommendation> updated = RecommendationEngine.recommend(
+            roster,
+            analyses,
+            lineup,
+            "游走",
+            dismissed
+        );
+
+        assertEquals("第二顺位", updated.get(0).hero.name);
+        assertEquals("第三顺位", updated.get(1).hero.name);
+        assertEquals("第四顺位", updated.get(2).hero.name);
     }
 
     private static BpModels.Hero hero(int id, String name, double tierScore, String tierRole, String... positions) {

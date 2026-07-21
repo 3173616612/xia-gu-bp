@@ -196,42 +196,102 @@
                 android:textSize="11sp"
                 android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/recommendationOne"
+            <LinearLayout
+                android:id="@+id/recommendationRowOne"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:background="@drawable/bg_outline"
-                android:padding="10dp"
-                android:textColor="@color/ink"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="8dp">
 
-            <TextView
-                android:id="@+id/recommendationTwo"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:background="@drawable/bg_outline"
-                android:padding="10dp"
-                android:textColor="@color/ink"
-                android:textSize="13sp" />
+                <TextView
+                    android:id="@+id/recommendationOne"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/ink"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/recommendationThree"
+                <Button
+                    android:id="@+id/dismissRecommendationOne"
+                    android:layout_width="68dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/bg_skip"
+                    android:text="不想玩"
+                    android:textAllCaps="false"
+                    android:textColor="@color/danger"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/recommendationRowTwo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:background="@drawable/bg_outline"
-                android:padding="10dp"
-                android:textColor="@color/ink"
-                android:textSize="13sp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="8dp">
+
+                <TextView
+                    android:id="@+id/recommendationTwo"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/ink"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/dismissRecommendationTwo"
+                    android:layout_width="68dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/bg_skip"
+                    android:text="不想玩"
+                    android:textAllCaps="false"
+                    android:textColor="@color/danger"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/recommendationRowThree"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_outline"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="8dp">
+
+                <TextView
+                    android:id="@+id/recommendationThree"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/ink"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/dismissRecommendationThree"
+                    android:layout_width="68dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/bg_skip"
+                    android:text="不想玩"
+                    android:textAllCaps="false"
+                    android:textColor="@color/danger"
+                    android:textSize="10sp" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="7dp"
-                android:text="所有关系来自巅峰千强实时样本；人数异常和多分路只影响置信度，不会阻止推荐。"
+                android:text="点击“不想玩”会换入下一顺位；重新识别后恢复。关系数据来自巅峰千强实时样本。"
                 android:textColor="@color/muted_2"
                 android:textSize="11sp" />
         </LinearLayout>

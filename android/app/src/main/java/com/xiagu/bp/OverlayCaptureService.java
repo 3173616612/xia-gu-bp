@@ -42,8 +42,10 @@ import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class OverlayCaptureService extends Service {
     static final String ACTION_START = "com.xiagu.bp.action.START";
@@ -68,6 +70,12 @@ public final class OverlayCaptureService extends Service {
     private TextView recommendationOne;
     private TextView recommendationTwo;
     private TextView recommendationThree;
+    private View recommendationRowOne;
+    private View recommendationRowTwo;
+    private View recommendationRowThree;
+    private Button dismissRecommendationOne;
+    private Button dismissRecommendationTwo;
+    private Button dismissRecommendationThree;
     private View detectedSection;
     private View recommendationSection;
     private Button scanButton;
@@ -84,6 +92,11 @@ public final class OverlayCaptureService extends Service {
     private int captureWidth;
     private int captureHeight;
     private int densityDpi;
+    private final Set<Integer> dismissedHeroIds = new HashSet<>();
+    private final List<BpModels.Recommendation> visibleRecommendations = new ArrayList<>();
+    private List<BpModels.Hero> activeRoster;
+    private Map<Integer, BpModels.Analysis> activeAnalyses;
+    private BpModels.DetectedLineup activeLineup;
 
     @Override
     public void onCreate() {
@@ -217,6 +230,12 @@ public final class OverlayCaptureService extends Service {
         recommendationOne = panel.findViewById(R.id.recommendationOne);
         recommendationTwo = panel.findViewById(R.id.recommendationTwo);
         recommendationThree = panel.findViewById(R.id.recommendationThree);
+        recommendationRowOne = panel.findViewById(R.id.recommendationRowOne);
+        recommendationRowTwo = panel.findViewById(R.id.recommendationRowTwo);
+        recommendationRowThree = panel.findViewById(R.id.recommendationRowThree);
+        dismissRecommendationOne = panel.findViewById(R.id.dismissRecommendationOne);
+        dismissRecommendationTwo = panel.findViewById(R.id.dismissRecommendationTwo);
+        dismissRecommendationThree = panel.findViewById(R.id.dismissRecommendationThree);
         detectedSection = panel.findViewById(R.id.detectedSection);
         recommendationSection = panel.findViewById(R.id.recommendationSection);
         scanButton = panel.findViewById(R.id.scanButton);
@@ -228,6 +247,9 @@ public final class OverlayCaptureService extends Service {
         panel.findViewById(R.id.collapseOverlayButton).setOnClickListener(view -> collapsePanel());
         panel.findViewById(R.id.stopOverlayButton).setOnClickListener(view -> stopSelf());
         scanButton.setOnClickListener(view -> requestCapture());
+        dismissRecommendationOne.setOnClickListener(view -> dismissVisibleRecommendation(0));
+        dismissRecommendationTwo.setOnClickListener(view -> dismissVisibleRecommendation(1));
+        dismissRecommendationThree.setOnClickListener(view -> dismissVisibleRecommendation(2));
         switchTeamSideButton.setOnClickListener(view -> {
             AppPrefs.setOurSideLeft(this, !AppPrefs.ourSideLeft(this));
             updateTeamSideLabel();
@@ -324,6 +346,7 @@ public final class OverlayCaptureService extends Service {
             overlayStatus.setText("截图授权已经失效，请返回应用重新启动悬浮助手。");
             return;
         }
+        resetRecommendationSession();
         overlayStatus.setText("正在隐藏悬浮窗并截取当前画面…");
         scanButton.setEnabled(false);
         panel.setVisibility(View.INVISIBLE);
@@ -495,13 +518,10 @@ public final class OverlayCaptureService extends Service {
         BpApiClient.loadAnalyses(selected, new BpApiClient.Callback<>() {
             @Override
             public void onSuccess(Map<Integer, BpModels.Analysis> analyses) {
-                List<BpModels.Recommendation> recommendations = RecommendationEngine.recommend(
-                    heroes,
-                    analyses,
-                    lineup,
-                    AppPrefs.lane(OverlayCaptureService.this)
-                );
-                showRecommendations(recommendations);
+                activeRoster = heroes;
+                activeAnalyses = analyses;
+                activeLineup = lineup;
+                refreshRecommendations(null);
                 String tierDate = BpApiClient.latestTierDate();
                 overlayStatus.setText("天元直连完成" + (tierDate.isBlank() ? "" : " · " + tierDate)
                     + " · " + AppPrefs.lane(OverlayCaptureService.this) + "推荐已更新");
@@ -530,20 +550,62 @@ public final class OverlayCaptureService extends Service {
 
     private void showRecommendations(List<BpModels.Recommendation> recommendations) {
         recommendationSection.setVisibility(View.VISIBLE);
+        visibleRecommendations.clear();
         TextView[] rows = {recommendationOne, recommendationTwo, recommendationThree};
+        View[] containers = {recommendationRowOne, recommendationRowTwo, recommendationRowThree};
+        Button[] dismissButtons = {
+            dismissRecommendationOne,
+            dismissRecommendationTwo,
+            dismissRecommendationThree
+        };
         for (int i = 0; i < rows.length; i++) {
             if (i < recommendations.size()) {
                 BpModels.Recommendation value = recommendations.get(i);
-                rows[i].setVisibility(View.VISIBLE);
+                visibleRecommendations.add(value);
+                containers[i].setVisibility(View.VISIBLE);
+                dismissButtons[i].setVisibility(View.VISIBLE);
+                dismissButtons[i].setContentDescription("不想玩" + value.hero.name);
                 rows[i].setText((i + 1) + "  " + value.hero.name + "   " + value.score + "\n" + value.summary);
             } else {
-                rows[i].setVisibility(View.GONE);
+                containers[i].setVisibility(View.GONE);
             }
         }
         if (recommendations.isEmpty()) {
-            recommendationOne.setVisibility(View.VISIBLE);
+            recommendationRowOne.setVisibility(View.VISIBLE);
+            dismissRecommendationOne.setVisibility(View.GONE);
             recommendationOne.setText("暂无符合该分路的可用候选，请切换分路或重新识别阵容与 BAN 位。");
         }
+    }
+
+    private void dismissVisibleRecommendation(int index) {
+        if (index < 0 || index >= visibleRecommendations.size()) return;
+        BpModels.Hero removed = visibleRecommendations.get(index).hero;
+        if (!dismissedHeroIds.add(removed.id)) return;
+        refreshRecommendations("已移除“" + removed.name + "”，后续英雄已按原顺位补上");
+    }
+
+    private void refreshRecommendations(String status) {
+        if (activeRoster == null || activeAnalyses == null || activeLineup == null) return;
+        List<BpModels.Recommendation> recommendations = RecommendationEngine.recommend(
+            activeRoster,
+            activeAnalyses,
+            activeLineup,
+            AppPrefs.lane(OverlayCaptureService.this),
+            dismissedHeroIds
+        );
+        showRecommendations(recommendations);
+        if (status != null) {
+            overlayStatus.setText(status + " · 本次已移除 " + dismissedHeroIds.size() + " 位");
+        }
+    }
+
+    private void resetRecommendationSession() {
+        dismissedHeroIds.clear();
+        visibleRecommendations.clear();
+        activeRoster = null;
+        activeAnalyses = null;
+        activeLineup = null;
+        if (recommendationSection != null) recommendationSection.setVisibility(View.GONE);
     }
 
     private void finishWithError(String message) {
