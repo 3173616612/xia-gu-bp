@@ -71,4 +71,27 @@ public final class BpScreenLayoutTest {
             assertFalse(slot.crop.intersects(layout.candidateExclusion));
         }
     }
+
+    @Test
+    public void expandedUltraWideAndVerticalShiftGeometryStaysInsideTheDraftEdges() {
+        BpScreenLayout layout = BpScreenLayout.adaptive(
+            2880,
+            1250,
+            0.233,
+            0.160,
+            0.030,
+            1.10,
+            0.195,
+            0.072,
+            0.054,
+            0.066
+        );
+
+        assertEquals(20, layout.slots.size());
+        for (BpScreenLayout.Slot slot : layout.slots) {
+            assertTrue(slot.crop.left >= 0 && slot.crop.top >= 0);
+            assertTrue(slot.crop.right <= layout.width && slot.crop.bottom <= layout.height);
+            assertFalse(slot.crop.intersects(layout.candidateExclusion));
+        }
+    }
 }

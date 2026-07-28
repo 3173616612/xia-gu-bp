@@ -50,6 +50,13 @@ final class AvatarRecognitionEngine {
     private static final double[] SCALES = {1.00, 0.92, 0.84, 0.76};
     private static final double[] X_OFFSETS = {-0.05, 0.0, 0.05};
     private static final double[] Y_OFFSETS = {-0.035, 0.0, 0.035};
+    private static final double[] PICK_CENTER_SEEDS = {
+        0.075, 0.090, 0.105, 0.120, 0.135, 0.150,
+        0.165, 0.180, 0.195, 0.210, 0.225
+    };
+    private static final double[] PICK_SIDE_SEEDS = {
+        0.086, 0.100, 0.114, 0.128, 0.144, 0.160
+    };
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final Object LIBRARY_LOCK = new Object();
@@ -90,6 +97,42 @@ final class AvatarRecognitionEngine {
     }
 
     private static BpModels.DetectedLineup recognizeSync(
+        Bitmap frame,
+        List<BpModels.Hero> heroes,
+        Library library,
+        boolean ourSideLeft
+    ) {
+        BpScreenLayout.IntRect viewport = detectContentViewport(frame);
+        boolean cropped = viewport.left > 0
+            || viewport.top > 0
+            || viewport.right < frame.getWidth()
+            || viewport.bottom < frame.getHeight();
+        if (!cropped) return recognizeViewportSync(frame, heroes, library, ourSideLeft);
+
+        Bitmap content = Bitmap.createBitmap(
+            frame,
+            viewport.left,
+            viewport.top,
+            viewport.width(),
+            viewport.height()
+        );
+        try {
+            BpModels.DetectedLineup output = recognizeViewportSync(content, heroes, library, ourSideLeft);
+            output.layoutProfile += String.format(
+                Locale.ROOT,
+                ",viewport=%d,%d,%d,%d",
+                viewport.left,
+                viewport.top,
+                viewport.right,
+                viewport.bottom
+            );
+            return output;
+        } finally {
+            content.recycle();
+        }
+    }
+
+    private static BpModels.DetectedLineup recognizeViewportSync(
         Bitmap frame,
         List<BpModels.Hero> heroes,
         Library library,
@@ -185,6 +228,88 @@ final class AvatarRecognitionEngine {
         return output;
     }
 
+    /**
+     * MediaProjection may include a navigation strip or letterbox on devices whose panel is wider
+     * than the game's render viewport. Strip only full-width/full-height, very dark and nearly
+     * uniform borders; ordinary dark game backgrounds are deliberately left untouched.
+     */
+    private static BpScreenLayout.IntRect detectContentViewport(Bitmap frame) {
+        int width = frame.getWidth();
+        int height = frame.getHeight();
+        int horizontalLimit = Math.max(1, Math.round(width * 0.14f));
+        int verticalLimit = Math.max(1, Math.round(height * 0.14f));
+
+        int left = 0;
+        while (left < horizontalLimit && isSolidDarkColumn(frame, left)) left++;
+        int right = width;
+        while (right > width - horizontalLimit && isSolidDarkColumn(frame, right - 1)) right--;
+        int top = 0;
+        while (top < verticalLimit && isSolidDarkRow(frame, top)) top++;
+        int bottom = height;
+        while (bottom > height - verticalLimit && isSolidDarkRow(frame, bottom - 1)) bottom--;
+
+        int minimumHorizontalTrim = Math.max(6, Math.round(width * 0.004f));
+        int minimumVerticalTrim = Math.max(6, Math.round(height * 0.006f));
+        if (left < minimumHorizontalTrim) left = 0;
+        if (width - right < minimumHorizontalTrim) right = width;
+        if (top < minimumVerticalTrim) top = 0;
+        if (height - bottom < minimumVerticalTrim) bottom = height;
+        int leftTrim = left;
+        int rightTrim = width - right;
+        int topTrim = top;
+        int bottomTrim = height - bottom;
+        if (!balancedBorders(leftTrim, rightTrim)) {
+            left = 0;
+            right = width;
+        }
+        if (!balancedBorders(topTrim, bottomTrim)) {
+            top = 0;
+            bottom = height;
+        }
+        if (right - left < width * 0.78 || bottom - top < height * 0.78) {
+            return new BpScreenLayout.IntRect(0, 0, width, height);
+        }
+        return new BpScreenLayout.IntRect(left, top, right, bottom);
+    }
+
+    private static boolean balancedBorders(int first, int second) {
+        if (first == 0 && second == 0) return true;
+        if (first == 0 || second == 0) return false;
+        int maximum = Math.max(first, second);
+        return Math.abs(first - second) <= Math.max(8, Math.round(maximum * 0.35f));
+    }
+
+    private static boolean isSolidDarkRow(Bitmap frame, int y) {
+        return isSolidDarkLine(frame, y, true);
+    }
+
+    private static boolean isSolidDarkColumn(Bitmap frame, int x) {
+        return isSolidDarkLine(frame, x, false);
+    }
+
+    private static boolean isSolidDarkLine(Bitmap frame, int fixedCoordinate, boolean horizontal) {
+        int length = horizontal ? frame.getWidth() : frame.getHeight();
+        int step = Math.max(1, length / 220);
+        double total = 0;
+        double squared = 0;
+        int samples = 0;
+        for (int offset = 0; offset < length; offset += step) {
+            int x = horizontal ? offset : fixedCoordinate;
+            int y = horizontal ? fixedCoordinate : offset;
+            int color = frame.getPixel(x, y);
+            double luminance = Color.red(color) * 0.299
+                + Color.green(color) * 0.587
+                + Color.blue(color) * 0.114;
+            total += luminance;
+            squared += luminance * luminance;
+            samples++;
+        }
+        if (samples == 0) return false;
+        double mean = total / samples;
+        double variance = Math.max(0, squared / samples - mean * mean);
+        return mean <= 42 && Math.sqrt(variance) <= 9;
+    }
+
     private static boolean hasUpperLeftVideoOverlay(Bitmap frame) {
         int limitX = Math.max(1, Math.round(frame.getWidth() * 0.38f));
         int limitY = Math.max(1, Math.round(frame.getHeight() * 0.11f));
@@ -213,29 +338,20 @@ final class AvatarRecognitionEngine {
     }
 
     private static PickGeometry searchPickGeometry(Bitmap frame, Library library) {
-        PickGeometry best = new PickGeometry(0.145, 0.124, 0, 1);
-        double bestQuality = coarseLayoutQuality(
-            frame,
-            adaptiveLayout(frame, best, BanGeometry.DEFAULT),
-            library,
-            false,
-            false
-        );
-
-        for (double center = 0.090; center <= 0.211; center += 0.010) {
-            for (double side : new double[]{0.105, 0.115, 0.124, 0.133}) {
+        List<PickCandidate> seeds = new ArrayList<>();
+        for (double center : PICK_CENTER_SEEDS) {
+            for (double side : PICK_SIDE_SEEDS) {
                 PickGeometry candidate = new PickGeometry(center, side, 0, 1);
                 double quality = coarseLayoutQuality(frame, adaptiveLayout(frame, candidate, BanGeometry.DEFAULT), library, false, false);
-                if (quality > bestQuality) {
-                    bestQuality = quality;
-                    best = candidate;
-                }
+                seeds.add(new PickCandidate(candidate, quality));
             }
         }
+        PickGeometry best = denseBestPick(frame, library, seeds, 8);
 
+        List<PickCandidate> refinements = new ArrayList<>();
         PickGeometry coarse = best;
         for (double centerDelta = -0.008; centerDelta <= 0.0081; centerDelta += 0.002) {
-            for (double sideDelta = -0.006; sideDelta <= 0.0061; sideDelta += 0.003) {
+            for (double sideDelta = -0.009; sideDelta <= 0.0091; sideDelta += 0.003) {
                 PickGeometry candidate = new PickGeometry(
                     coarse.centerFromEdge + centerDelta,
                     coarse.side + sideDelta,
@@ -243,22 +359,45 @@ final class AvatarRecognitionEngine {
                     1
                 );
                 double quality = coarseLayoutQuality(frame, adaptiveLayout(frame, candidate, BanGeometry.DEFAULT), library, false, false);
-                if (quality > bestQuality) {
-                    bestQuality = quality;
-                    best = candidate;
-                }
+                refinements.add(new PickCandidate(candidate, quality));
             }
         }
+        best = denseBestPick(frame, library, refinements, 8);
 
+        List<PickCandidate> verticals = new ArrayList<>();
         PickGeometry horizontal = best;
-        for (double yOffset : new double[]{-0.012, -0.006, 0, 0.006, 0.012}) {
-            for (double spread : new double[]{0.97, 1, 1.03}) {
+        for (double yOffset : new double[]{-0.030, -0.020, -0.010, 0, 0.010, 0.020, 0.030}) {
+            for (double spread : new double[]{0.90, 0.95, 1, 1.05, 1.10}) {
                 PickGeometry candidate = new PickGeometry(horizontal.centerFromEdge, horizontal.side, yOffset, spread);
                 double quality = coarseLayoutQuality(frame, adaptiveLayout(frame, candidate, BanGeometry.DEFAULT), library, false, false);
-                if (quality > bestQuality) {
-                    bestQuality = quality;
-                    best = candidate;
-                }
+                verticals.add(new PickCandidate(candidate, quality));
+            }
+        }
+        return denseBestPick(frame, library, verticals, 10);
+    }
+
+    private static PickGeometry denseBestPick(
+        Bitmap frame,
+        Library library,
+        List<PickCandidate> candidates,
+        int finalistCount
+    ) {
+        candidates.sort(Comparator.comparingDouble((PickCandidate value) -> value.quality).reversed());
+        PickGeometry best = candidates.get(0).geometry;
+        double bestQuality = Double.NEGATIVE_INFINITY;
+        for (int index = 0; index < Math.min(finalistCount, candidates.size()); index++) {
+            PickGeometry candidate = candidates.get(index).geometry;
+            double quality = coarseLayoutQuality(
+                frame,
+                adaptiveLayout(frame, candidate, BanGeometry.DEFAULT),
+                library,
+                false,
+                false,
+                true
+            );
+            if (quality > bestQuality) {
+                bestQuality = quality;
+                best = candidate;
             }
         }
         return best;
@@ -379,26 +518,25 @@ final class AvatarRecognitionEngine {
         boolean bans,
         boolean ignoreLeftBans
     ) {
-        List<Double> slotScores = new ArrayList<>();
+        return coarseLayoutQuality(frame, layout, library, bans, ignoreLeftBans, false);
+    }
+
+    private static double coarseLayoutQuality(
+        Bitmap frame,
+        BpScreenLayout layout,
+        Library library,
+        boolean bans,
+        boolean ignoreLeftBans,
+        boolean includeAllPickRows
+    ) {
+        List<CoarseEvidence> evidence = new ArrayList<>();
         for (BpScreenLayout.Slot slot : layout.slots) {
             if (slot.isBan() != bans) continue;
-            if (!bans && slot.index % 2 != 0) continue;
+            if (!bans && !includeAllPickRows && slot.index % 2 != 0) continue;
             if (ignoreLeftBans && slot.kind == BpScreenLayout.Kind.LEFT_BAN) continue;
-            Bitmap crop = Bitmap.createBitmap(
-                frame,
-                slot.crop.left,
-                slot.crop.top,
-                slot.crop.width(),
-                slot.crop.height()
-            );
-            Descriptor query;
-            try {
-                query = describe(crop, 0.88, 0, 0, slot.circular);
-            } finally {
-                crop.recycle();
-            }
+            Descriptor query = describeCrop(frame, slot.crop, 0.88, 0, 0, slot.circular);
             if (query.contrast < 0.085) {
-                slotScores.add(0.0);
+                evidence.add(new CoarseEvidence(0, slot.index, slot.isLeft()));
                 continue;
             }
 
@@ -415,12 +553,32 @@ final class AvatarRecognitionEngine {
                 }
             }
             double margin = Math.max(0, bestScore - secondScore);
-            slotScores.add(Math.max(0, bestScore - 0.20) + Math.min(0.12, margin) * 0.6);
+            // Keep the same portrait evidence scale used by the proven real-screen fixtures.
+            // Dense finalist ranking adds row/side coverage without changing what a strong
+            // portrait looks like, so expanding the geometry range cannot demote a known layout.
+            double score = Math.max(0, bestScore - 0.20)
+                + Math.min(0.12, margin) * 0.6;
+            evidence.add(new CoarseEvidence(score, slot.index, slot.isLeft()));
         }
-        slotScores.sort(Comparator.reverseOrder());
-        int evidenceSlots = Math.min(4, slotScores.size());
+        evidence.sort(Comparator.comparingDouble((CoarseEvidence value) -> value.score).reversed());
+        int evidenceSlots = Math.min(includeAllPickRows ? 6 : 4, evidence.size());
         double quality = 0;
-        for (int i = 0; i < evidenceSlots; i++) quality += slotScores.get(i);
+        Set<Integer> rows = new HashSet<>();
+        boolean leftEvidence = false;
+        boolean rightEvidence = false;
+        for (int i = 0; i < evidenceSlots; i++) {
+            CoarseEvidence item = evidence.get(i);
+            quality += item.score * (1.0 - i * 0.07);
+            if (item.score >= 0.12) {
+                rows.add(item.index);
+                leftEvidence |= item.left;
+                rightEvidence |= !item.left;
+            }
+        }
+        if (includeAllPickRows) {
+            quality += rows.size() * 0.025;
+            if (leftEvidence && rightEvidence) quality += 0.05;
+        }
         return quality;
     }
 
@@ -623,15 +781,33 @@ final class AvatarRecognitionEngine {
     }
 
     private static Descriptor describe(Bitmap bitmap, double scale, double xOffset, double yOffset, boolean circular) {
+        return describeCrop(
+            bitmap,
+            new BpScreenLayout.IntRect(0, 0, bitmap.getWidth(), bitmap.getHeight()),
+            scale,
+            xOffset,
+            yOffset,
+            circular
+        );
+    }
+
+    private static Descriptor describeCrop(
+        Bitmap bitmap,
+        BpScreenLayout.IntRect crop,
+        double scale,
+        double xOffset,
+        double yOffset,
+        boolean circular
+    ) {
         float[] gray = new float[GRID * GRID];
         float[] edge = new float[GRID * GRID];
         boolean[] valid = new boolean[GRID * GRID];
         float[] histogram = new float[24];
-        int width = bitmap.getWidth();
-        int height = bitmap.getHeight();
+        int width = crop.width();
+        int height = crop.height();
         double side = Math.min(width, height) * scale;
-        double centerX = (width - 1) * (0.5 + xOffset);
-        double centerY = (height - 1) * (0.5 + yOffset);
+        double centerX = crop.left + (width - 1) * (0.5 + xOffset);
+        double centerY = crop.top + (height - 1) * (0.5 + yOffset);
         double startX = centerX - side * 0.5;
         double startY = centerY - side * 0.5;
         double grayTotal = 0;
@@ -645,8 +821,16 @@ final class AvatarRecognitionEngine {
                 double nx = (x + 0.5) / GRID - 0.5;
                 double ny = (y + 0.5) / GRID - 0.5;
                 if (circular && nx * nx + ny * ny > 0.235) continue;
-                int sourceX = clamp((int) Math.round(startX + (x + 0.5) * side / GRID), 0, width - 1);
-                int sourceY = clamp((int) Math.round(startY + (y + 0.5) * side / GRID), 0, height - 1);
+                int sourceX = clamp(
+                    (int) Math.round(startX + (x + 0.5) * side / GRID),
+                    crop.left,
+                    crop.right - 1
+                );
+                int sourceY = clamp(
+                    (int) Math.round(startY + (y + 0.5) * side / GRID),
+                    crop.top,
+                    crop.bottom - 1
+                );
                 int color = bitmap.getPixel(sourceX, sourceY);
                 int red = Color.red(color);
                 int green = Color.green(color);
@@ -773,6 +957,8 @@ final class AvatarRecognitionEngine {
     private record ScoredHero(int heroId, double score) {}
     private record ScoredReference(Reference reference, double score) {}
     private record PickGeometry(double centerFromEdge, double side, double yOffset, double spread) {}
+    private record PickCandidate(PickGeometry geometry, double quality) {}
+    private record CoarseEvidence(double score, int index, boolean left) {}
     private record BanGeometry(double firstFromEdge, double spacing, double centerY, double side) {
         private static final BanGeometry DEFAULT = new BanGeometry(0.130, 0.064, 0.045, 0.059);
     }
