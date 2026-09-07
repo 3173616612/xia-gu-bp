@@ -12,12 +12,18 @@ public final class BpScreenLayoutTest {
     @Test
     public void candidateBrowserIsExcludedAcrossCommonLandscapeRatios() {
         List<int[]> sizes = List.of(
+            new int[]{1440, 1080},
+            new int[]{1620, 1080},
+            new int[]{1728, 1080},
             new int[]{1920, 1080},
             new int[]{2160, 1080},
             new int[]{2340, 1080},
             new int[]{2400, 1080},
             new int[]{2560, 1080},
-            new int[]{2559, 1186}
+            new int[]{2559, 1186},
+            new int[]{2640, 1080},
+            new int[]{2880, 1080},
+            new int[]{1280, 960}
         );
 
         for (int[] size : sizes) {
@@ -29,6 +35,25 @@ public final class BpScreenLayoutTest {
                     assertTrue(slot.crop.right <= size[0] && slot.crop.bottom <= size[1]);
                 }
             }
+        }
+    }
+
+    @Test public void asymmetricOffsetsStaySafeAndNeverShiftTheOppositeTeam() {
+        BpScreenLayout initial = BpScreenLayout.create(2400, 1080);
+        BpScreenLayout moved = initial.shifted(true, false, 22, 10);
+        assertTrue(moved != null);
+        for (int i = 0; i < initial.slots.size(); i++) {
+            var before = initial.slots.get(i); var after = moved.slots.get(i);
+            assertEquals(before.crop.left + (before.isLeft() && !before.isBan() ? 22 : 0), after.crop.left);
+            assertFalse(after.crop.intersects(moved.candidateExclusion));
+        }
+        assertTrue(initial.shifted(true, false, 1000, 0) == null);
+    }
+
+    @Test public void tabletSearchExtremesDoNotCrashOrSampleCenter() {
+        for (double center : new double[]{.075, .150, .233}) for (double side : new double[]{.086, .160, .169}) {
+            var layout = BpScreenLayout.adaptive(1440, 1080, center, side, .03, 1.1, .13, .068, .045, .059);
+            for (var slot : layout.slots) assertFalse(slot.crop.intersects(layout.candidateExclusion));
         }
     }
 

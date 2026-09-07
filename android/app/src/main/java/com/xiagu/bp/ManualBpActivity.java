@@ -96,6 +96,12 @@ public final class ManualBpActivity extends Activity {
         findViewById(R.id.manualClearButton).setOnClickListener(view -> clearDraft());
         findViewById(R.id.addManualBanButton).setOnClickListener(view -> showBanPicker());
         recommendButton.setOnClickListener(view -> loadRelationsAndRecommend());
+        findViewById(R.id.manualMatchupAnalysisButton).setOnClickListener(view -> {
+            if (roster.isEmpty()) return;
+            BpModels.DetectedLineup lineup = new BpModels.DetectedLineup();
+            lineup.allies.addAll(allyHeroes()); lineup.enemies.addAll(enemyHeroes()); lineup.bans.addAll(bans);
+            MatchupAnalysisActivity.open(this, roster, lineup, activeAnalyses, allySlots, enemySlots);
+        });
     }
 
     private void setupLaneButtons() {

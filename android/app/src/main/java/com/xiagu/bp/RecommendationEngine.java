@@ -38,40 +38,20 @@ final class RecommendationEngine {
             if (!candidate.supports(targetLane) || excluded.contains(candidate.id)) continue;
 
             List<WeightedRelation> matchupRelations = new ArrayList<>();
-            int sampleTotal = 0;
+            int knownMatchups = 0, knownSynergies = 0;
             for (BpModels.Hero enemy : lineup.enemies) {
-                BpModels.Analysis analysis = analyses.get(enemy.id);
-                double value = 0;
-                if (analysis != null) {
-                    BpModels.Relation favorable = find(analysis.counteredBy, candidate.name);
-                    BpModels.Relation unfavorable = find(analysis.counters, candidate.name);
-                    if (favorable != null) {
-                        value = Math.abs(favorable.value);
-                        sampleTotal += favorable.totalMatches;
-                    } else if (unfavorable != null) {
-                        value = -Math.abs(unfavorable.value);
-                        sampleTotal += unfavorable.totalMatches;
-                    }
-                }
+                MatchupAnalysisEngine.Evidence evidence = MatchupAnalysisEngine.counter(candidate, enemy, analyses);
+                double value = evidence.reliableValue();
+                if (evidence.known()) knownMatchups++;
                 double weight = 0.9 + 0.25 * positionProbability(enemy, targetLane);
                 matchupRelations.add(new WeightedRelation(value, weight));
             }
 
             List<WeightedRelation> synergyRelations = new ArrayList<>();
             for (BpModels.Hero ally : lineup.allies) {
-                BpModels.Analysis analysis = analyses.get(ally.id);
-                double value = 0;
-                if (analysis != null) {
-                    BpModels.Relation good = find(analysis.goodSynergies, candidate.name);
-                    BpModels.Relation bad = find(analysis.badSynergies, candidate.name);
-                    if (good != null) {
-                        value = Math.abs(good.value);
-                        sampleTotal += good.totalMatches;
-                    } else if (bad != null) {
-                        value = -Math.abs(bad.value);
-                        sampleTotal += bad.totalMatches;
-                    }
-                }
+                MatchupAnalysisEngine.Evidence evidence = MatchupAnalysisEngine.synergy(candidate, ally, analyses);
+                double value = evidence.reliableValue();
+                if (evidence.known()) knownSynergies++;
                 synergyRelations.add(new WeightedRelation(value, 1));
             }
 
@@ -104,7 +84,8 @@ final class RecommendationEngine {
             String negativeNote = value.negativePenalty > 0 ? " · 负向-" + value.negativePenalty : "";
             value.summary = "对敌 " + matchup.score + " · 配合 " + synergy.score
                 + " · 梯度 " + tierLabel + " · 提升 " + counterLift
-                + negativeNote + roleNote;
+                + negativeNote + roleNote
+                + " · 已知关系 " + (knownMatchups + knownSynergies) + "/" + (lineup.enemies.size() + lineup.allies.size());
             output.add(value);
         }
 

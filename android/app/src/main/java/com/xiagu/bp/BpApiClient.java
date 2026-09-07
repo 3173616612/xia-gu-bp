@@ -33,6 +33,7 @@ final class BpApiClient {
     private static final String TIER_PATH = "/api/global/tier?date=";
     private static final String ANALYSIS_PATH = "/api/hero/analysis?heroId=";
     private static final ExecutorService IO = Executors.newFixedThreadPool(4);
+    private static final ExecutorService RELATION_IO = Executors.newFixedThreadPool(4);
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static volatile String latestTierDate = "";
 
@@ -79,13 +80,16 @@ final class BpApiClient {
             Set<Integer> uniqueIds = new LinkedHashSet<>();
             for (BpModels.Hero hero : selected) uniqueIds.add(hero.id);
 
-            for (Integer heroId : uniqueIds) {
-                try {
-                    JSONObject payload = requestObject(TIANYUAN_BASE_URL + ANALYSIS_PATH + heroId);
-                    results.put(heroId, parseAnalysis(payload));
-                } catch (Exception error) {
-                    Log.w(TAG, "analysis failed for heroId=" + heroId + ": " + error.getMessage());
-                }
+            Map<Integer, java.util.concurrent.Future<BpModels.Analysis>> requests = new LinkedHashMap<>();
+            for (Integer heroId : uniqueIds) requests.put(heroId, RELATION_IO.submit(() -> {
+                JSONObject payload = requestObject(TIANYUAN_BASE_URL + ANALYSIS_PATH + heroId);
+                BpModels.Analysis analysis = parseAnalysis(payload);
+                if (analysis.heroId != heroId) throw new IllegalStateException("英雄关系 ID 不匹配");
+                return analysis;
+            }));
+            for (Map.Entry<Integer, java.util.concurrent.Future<BpModels.Analysis>> request : requests.entrySet()) {
+                try { results.put(request.getKey(), request.getValue().get()); }
+                catch (Exception error) { Log.w(TAG, "analysis failed for heroId=" + request.getKey() + ": " + error.getMessage()); }
             }
 
             if (!uniqueIds.isEmpty() && results.isEmpty()) {
@@ -213,16 +217,18 @@ final class BpApiClient {
         connection.setRequestProperty("Accept", "application/json");
         connection.setRequestProperty("Cache-Control", "no-cache");
         connection.setUseCaches(false);
-        int status = connection.getResponseCode();
-        if (status < 200 || status >= 300) throw new IllegalStateException("HTTP " + status);
-        StringBuilder body = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) body.append(line);
+        try {
+            int status = connection.getResponseCode();
+            if (status < 200 || status >= 300) throw new IllegalStateException("HTTP " + status);
+            StringBuilder body = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) body.append(line);
+            }
+            return body.toString();
         } finally {
             connection.disconnect();
         }
-        return body.toString();
     }
 
     private static String readableError(String dataName, Exception error) {

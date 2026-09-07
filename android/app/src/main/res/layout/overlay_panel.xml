@@ -178,6 +178,16 @@
                 android:textColor="@color/warning"
                 android:textSize="11sp"
                 android:visibility="gone" />
+
+            <Button
+                android:id="@+id/openMatchupAnalysisButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_outline"
+                android:text="阵容对位分析 › 五路 / 组合 / 全对位"
+                android:textColor="@color/cyan"
+                android:textSize="12sp" />
         </LinearLayout>
 
         <LinearLayout

@@ -140,4 +140,29 @@ public final class RecommendationEngineTest {
         hero.positions.addAll(List.of(positions));
         return hero;
     }
+
+    @Test public void badMatchupsAndBadSynergyLowerRecommendationScores() {
+        var candidate = hero(1, "候选", 50, "游走", "游走");
+        var enemy = hero(2, "敌方", 50, "中路", "中路");
+        var ally = hero(3, "队友", 50, "打野", "打野");
+        var lineup = new BpModels.DetectedLineup(); lineup.enemies.add(enemy); lineup.allies.add(ally);
+        var baseline = RecommendationEngine.recommend(List.of(candidate), Map.of(), lineup, "游走").get(0);
+        var enemyData = new BpModels.Analysis(); enemyData.heroId = 2;
+        var bad = new BpModels.Relation(); bad.heroName = "候选"; bad.value = 5; bad.totalMatches = 300;
+        enemyData.counters.add(bad);
+        var allyData = new BpModels.Analysis(); allyData.heroId = 3; allyData.badSynergies.add(bad);
+        var result = RecommendationEngine.recommend(List.of(candidate), Map.of(2, enemyData, 3, allyData), lineup, "游走").get(0);
+        assertTrue(result.score < baseline.score);
+        assertTrue(result.matchupScore < 50); assertTrue(result.synergyScore < 50);
+        assertTrue(result.negativePenalty > 0);
+    }
+
+    @Test public void candidateEndpointEvidenceWorksWhenEnemyEndpointOmitsThePair() {
+        var candidate = hero(1, "候选", 50, "游走", "游走"); var enemy = hero(2, "敌方", 50, "中路", "中路");
+        var lineup = new BpModels.DetectedLineup(); lineup.enemies.add(enemy);
+        var data = new BpModels.Analysis(); data.heroId = 1;
+        var row = new BpModels.Relation(); row.heroName = "敌方"; row.value = 4; row.totalMatches = 400; data.counters.add(row);
+        var result = RecommendationEngine.recommend(List.of(candidate), Map.of(1, data), lineup, "游走").get(0);
+        assertTrue(result.matchupScore > 50);
+    }
 }

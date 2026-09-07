@@ -193,7 +193,7 @@ public final class OverlayCaptureService extends Service {
 
         FrameLayout overlayRoot = new FrameLayout(this);
         panel = LayoutInflater.from(this).inflate(R.layout.overlay_panel, overlayRoot, false);
-        panelParams = baseParams(dp(330), panelHeight());
+        panelParams = baseParams(Math.min(dp(330), screenMetrics().widthPixels - dp(24)), panelHeight());
         panelParams.gravity = Gravity.TOP | Gravity.END;
         panelParams.x = dp(12);
         panelParams.y = dp(64);
@@ -218,7 +218,7 @@ public final class OverlayCaptureService extends Service {
 
     private int panelHeight() {
         DisplayMetrics metrics = screenMetrics();
-        return Math.max(dp(360), Math.min(metrics.heightPixels - dp(32), dp(590)));
+        return Math.max(dp(120), Math.min(metrics.heightPixels - dp(88), dp(590)));
     }
 
     private void bindPanel() {
@@ -247,6 +247,11 @@ public final class OverlayCaptureService extends Service {
         panel.findViewById(R.id.collapseOverlayButton).setOnClickListener(view -> collapsePanel());
         panel.findViewById(R.id.stopOverlayButton).setOnClickListener(view -> stopSelf());
         scanButton.setOnClickListener(view -> requestCapture());
+        panel.findViewById(R.id.openMatchupAnalysisButton).setOnClickListener(view -> {
+            if (activeLineup == null || activeRoster == null) return;
+            MatchupAnalysisActivity.open(this, activeRoster, activeLineup, activeAnalyses, null, null);
+            collapsePanel();
+        });
         dismissRecommendationOne.setOnClickListener(view -> dismissVisibleRecommendation(0));
         dismissRecommendationTwo.setOnClickListener(view -> dismissVisibleRecommendation(1));
         dismissRecommendationThree.setOnClickListener(view -> dismissVisibleRecommendation(2));
@@ -330,6 +335,7 @@ public final class OverlayCaptureService extends Service {
     }
 
     private void expandPanel() {
+        panelParams.width = Math.min(dp(330), screenMetrics().widthPixels - dp(24));
         panelParams.height = panelHeight();
         windowManager.updateViewLayout(panel, panelParams);
         panel.setVisibility(View.VISIBLE);
@@ -400,7 +406,7 @@ public final class OverlayCaptureService extends Service {
         captureRequested = false;
         Bitmap bitmap;
         try {
-            bitmap = imageToBitmap(image, captureWidth, captureHeight);
+            bitmap = imageToBitmap(image, image.getWidth(), image.getHeight());
         } finally {
             image.close();
         }
@@ -511,6 +517,9 @@ public final class OverlayCaptureService extends Service {
             setupLaneButtons();
         }
         showDetected(lineup);
+        activeRoster = heroes;
+        activeLineup = lineup;
+        activeAnalyses = java.util.Collections.emptyMap();
         overlayStatus.setText("已识别画面，正在计算对位与队友配合…");
         List<BpModels.Hero> selected = new ArrayList<>();
         selected.addAll(lineup.allies);
@@ -605,6 +614,7 @@ public final class OverlayCaptureService extends Service {
         activeRoster = null;
         activeAnalyses = null;
         activeLineup = null;
+        if (detectedSection != null) detectedSection.setVisibility(View.GONE);
         if (recommendationSection != null) recommendationSection.setVisibility(View.GONE);
     }
 

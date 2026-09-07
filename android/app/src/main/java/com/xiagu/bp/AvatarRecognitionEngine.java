@@ -102,6 +102,9 @@ final class AvatarRecognitionEngine {
         Library library,
         boolean ourSideLeft
     ) {
+        if (frame.getWidth() < frame.getHeight() * 1.25) {
+            throw new IllegalArgumentException("请在横屏 BP 界面识别；当前截图不是受支持的横屏画面。");
+        }
         BpScreenLayout.IntRect viewport = detectContentViewport(frame);
         boolean cropped = viewport.left > 0
             || viewport.top > 0
@@ -258,11 +261,11 @@ final class AvatarRecognitionEngine {
         int rightTrim = width - right;
         int topTrim = top;
         int bottomTrim = height - bottom;
-        if (!balancedBorders(leftTrim, rightTrim)) {
+        if (!balancedBorders(leftTrim, rightTrim) && !nearBlackBorder(frame, leftTrim, rightTrim, true)) {
             left = 0;
             right = width;
         }
-        if (!balancedBorders(topTrim, bottomTrim)) {
+        if (!balancedBorders(topTrim, bottomTrim) && !nearBlackBorder(frame, topTrim, bottomTrim, false)) {
             top = 0;
             bottom = height;
         }
@@ -277,6 +280,25 @@ final class AvatarRecognitionEngine {
         if (first == 0 || second == 0) return false;
         int maximum = Math.max(first, second);
         return Math.abs(first - second) <= Math.max(8, Math.round(maximum * 0.35f));
+    }
+
+    /** One-sided navigation/cutout bands must be almost black, not just dark game artwork. */
+    private static boolean nearBlackBorder(Bitmap frame, int first, int second, boolean horizontal) {
+        int length = horizontal ? frame.getWidth() : frame.getHeight();
+        int across = horizontal ? frame.getHeight() : frame.getWidth();
+        if (Math.max(first, second) > length * .08) return false;
+        for (int side = 0; side < 2; side++) {
+            int trim = side == 0 ? first : second;
+            if (trim == 0) continue;
+            for (int depth = 1; depth < trim; depth += Math.max(1, trim / 6)) {
+                int coordinate = side == 0 ? depth : length - 1 - depth;
+                for (int offset = across / 10; offset < across * .9; offset += Math.max(1, across / 35)) {
+                    int pixel = horizontal ? frame.getPixel(coordinate, offset) : frame.getPixel(offset, coordinate);
+                    if (Color.red(pixel) > 16 || Color.green(pixel) > 16 || Color.blue(pixel) > 16) return false;
+                }
+            }
+        }
+        return first > 0 || second > 0;
     }
 
     private static boolean isSolidDarkRow(Bitmap frame, int y) {
@@ -311,7 +333,7 @@ final class AvatarRecognitionEngine {
     }
 
     private static boolean hasUpperLeftVideoOverlay(Bitmap frame) {
-        int limitX = Math.max(1, Math.round(frame.getWidth() * 0.38f));
+        int limitX = Math.max(1, Math.min(frame.getWidth(), Math.round(frame.getHeight() * 0.78f)));
         int limitY = Math.max(1, Math.round(frame.getHeight() * 0.11f));
         int step = Math.max(2, frame.getHeight() / 420);
         int whitePixels = 0;
@@ -334,7 +356,47 @@ final class AvatarRecognitionEngine {
     private static BpScreenLayout selectLayout(Bitmap frame, Library library, boolean obscureLeftBans) {
         PickGeometry picks = searchPickGeometry(frame, library);
         BanGeometry bans = searchBanGeometry(frame, library, picks, obscureLeftBans);
-        return adaptiveLayout(frame, picks, bans);
+        BpScreenLayout layout = adaptiveLayout(frame, picks, bans);
+        for (boolean left : new boolean[]{true, false}) {
+            layout = refineSide(frame, library, layout, left, false);
+            if (!(left && obscureLeftBans)) layout = refineSide(frame, library, layout, left, true);
+        }
+        return layout;
+    }
+
+    private static BpScreenLayout refineSide(Bitmap frame, Library library, BpScreenLayout original, boolean left, boolean bans) {
+        double baseline = sideQuality(frame, library, original, left, bans);
+        double bestQuality = baseline;
+        BpScreenLayout best = original;
+        // Require a material improvement over the existing global fit. Empty/occluded sides stay put.
+        for (double x : new double[]{-.024, -.012, 0, .012, .024}) {
+            for (double y : new double[]{-.010, 0, .010}) {
+                if (x == 0 && y == 0) continue;
+                BpScreenLayout candidate = original.shifted(left, bans,
+                    (int) Math.round(x * frame.getHeight()), (int) Math.round(y * frame.getHeight()));
+                if (candidate == null) continue;
+                double quality = sideQuality(frame, library, candidate, left, bans);
+                if (quality > bestQuality + .0001) { best = candidate; bestQuality = quality; }
+            }
+        }
+        return bestQuality > baseline + .10 ? best : original;
+    }
+
+    private static double sideQuality(Bitmap frame, Library library, BpScreenLayout layout, boolean left, boolean bans) {
+        double total = 0; int supported = 0;
+        for (BpScreenLayout.Slot slot : layout.slots) {
+            if (slot.isLeft() != left || slot.isBan() != bans) continue;
+            Descriptor query = describeCrop(frame, slot.crop, .88, 0, 0, bans);
+            if (query.contrast < .105) continue;
+            double best = -1, second = -1;
+            for (Reference reference : library.references) {
+                double score = similarity(query, bans ? reference.circularAnchor : reference.squareAnchor);
+                if (score > best) {second = best; best = score;} else if (score > second) second = score;
+            }
+            if (best < .43 || best - second < .015) continue;
+            total += best - .30 + Math.min(.12, best - second); supported++;
+        }
+        return supported >= 2 ? total : 0;
     }
 
     private static PickGeometry searchPickGeometry(Bitmap frame, Library library) {
@@ -588,14 +650,21 @@ final class AvatarRecognitionEngine {
         Library library,
         boolean ignoreLeftBans
     ) {
-        double quality = 0;
+        Map<String, Double> distinct = new HashMap<>();
         for (BpScreenLayout.Slot slot : layout.slots) {
-            if (!slot.isBan() || slot.index % 2 != 0) continue;
+            if (!slot.isBan()) continue;
             if (ignoreLeftBans && slot.kind == BpScreenLayout.Kind.LEFT_BAN) continue;
             SlotMatch match = matchSlot(frame, slot, library);
-            if (match.accepted) quality += 2 + match.score + Math.min(0.25, match.margin);
-            else quality += Math.max(0, match.score - 0.55) * 0.1;
+            if (!match.accepted) continue;
+            // A weak ambiguous crop must not outweigh four well-aligned portraits. Repeated
+            // guesses of the same hero within ONE team's ban row are not independent anchors.
+            double evidence = Math.max(0, match.score - .45) + Math.min(.25, match.margin) * 2
+                + (match.score >= .62 && match.margin >= .06 ? 1 : 0);
+            String key = slot.kind + ":" + match.heroId;
+            distinct.merge(key, evidence, Math::max);
         }
+        double quality = 0;
+        for (double evidence : distinct.values()) quality += evidence;
         return quality;
     }
 
@@ -648,7 +717,17 @@ final class AvatarRecognitionEngine {
     private static double bestSimilarity(List<Descriptor> queries, List<Descriptor> candidates) {
         double best = -1;
         for (Descriptor query : queries) {
-            for (Descriptor candidate : candidates) best = Math.max(best, similarity(query, candidate));
+            for (Descriptor candidate : candidates) {
+                double gray = dot(query.gray, candidate.gray) * .72;
+                // Exact upper-bound pruning: normalized edges and histogram intersection <= 1.
+                // Saves work without reducing the shortlist, scales or acceptance thresholds.
+                if (gray + .280001 < best) continue;
+                double edge = dot(query.edge, candidate.edge) * .16;
+                if (gray + edge + .120001 < best) continue;
+                double histogram = 0;
+                for (int i = 0; i < query.histogram.length; i++) histogram += Math.min(query.histogram[i], candidate.histogram[i]);
+                best = Math.max(best, gray + edge + histogram * .12);
+            }
         }
         return best;
     }

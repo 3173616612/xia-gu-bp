@@ -37,7 +37,9 @@ npm run build
 
 ![手动 BP 英雄头像选择器](docs/design-qa/manual-picker-android.png)
 
-最新版为 **v1.7.0**，支持 Android 8.0 及以上。APK 在 Release 页面提供，SHA-256 同时写入发布说明。
+最新版为 **v1.8.0**，支持 Android 8.0 及以上，可覆盖安装 1.7.0。[下载 1.8.0 安装包](https://github.com/3173616612/xia-gu-bp/releases/tag/v1.8.0)，发布页同时提供 SHA-256 校验文件。本地构建产物位于 `output/xia-gu-bp-polished-secure-v1.8.apk`。
+
+1.8.0 新增识别后阵容对位页：五路、全阵容交叉矩阵，以及中野／中辅／边野／射辅组合分析；允许校正分路和补录英雄，缺失证据不视为均势。同步优化了小样本关系计分、BAN 整行拟合、左右独立边距和 4:3 至超宽横屏比例适配。验证范围与限制见 [`android/QA-1.8.0.md`](android/QA-1.8.0.md)。
 
 ## 数据来源与声明
 

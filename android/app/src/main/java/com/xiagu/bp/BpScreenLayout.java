@@ -18,7 +18,9 @@ final class BpScreenLayout {
     enum Profile {
         COMPACT(0.105, 0.076, 0.064, 0.060),
         MEDIUM(0.145, 0.108, 0.061, 0.063),
-        WIDE(0.185, 0.159, 0.067, 0.066);
+        WIDE(0.185, 0.159, 0.067, 0.066),
+        TABLET(0.090, 0.067, 0.061, 0.052),
+        ULTRAWIDE(0.225, 0.185, 0.068, 0.060);
 
         final double pickCenterFromEdge;
         final double firstBanFromEdge;
@@ -97,6 +99,21 @@ final class BpScreenLayout {
 
     static BpScreenLayout create(int width, int height) {
         return create(width, height, Profile.WIDE);
+    }
+
+    /** Local edge correction for cutouts/safe areas. Never allows a crop into the center. */
+    BpScreenLayout shifted(boolean leftSide, boolean bans, int dx, int dy) {
+        List<Slot> moved = new ArrayList<>();
+        for (Slot slot : slots) {
+            IntRect r = slot.crop;
+            if (slot.isLeft() == leftSide && slot.isBan() == bans) {
+                r = new IntRect(r.left + dx, r.top + dy, r.right + dx, r.bottom + dy);
+                if (r.left < 0 || r.top < 0 || r.right > width || r.bottom > height || r.intersects(candidateExclusion)) return null;
+            }
+            moved.add(new Slot(slot.kind, slot.index, r, slot.circular));
+        }
+        return new BpScreenLayout(width, height, profile,
+            profileName + String.format(Locale.ROOT, ",%s%s=%+d,%+d", leftSide ? "L" : "R", bans ? "ban" : "pick", dx, dy), candidateExclusion, moved);
     }
 
     static List<BpScreenLayout> candidates(int width, int height) {
@@ -180,7 +197,10 @@ final class BpScreenLayout {
 
         List<Slot> slots = new ArrayList<>(20);
         int pickSide = Math.max(24, (int) Math.round(height * pickSideRatio));
-        int pickCenterFromEdge = (int) Math.round(height * pickCenterFromEdgeRatio);
+        // Narrow tablets have a smaller safe side strip than ultra-wide phones. Clamp the SEARCH
+        // geometry, not the exclusion zone, so no candidate-grid crop is ever admitted.
+        int maxCenter = (int) Math.floor(width * 0.225) - (pickSide + 1) / 2 - 2;
+        int pickCenterFromEdge = Math.max(pickSide / 2, Math.min(maxCenter, (int) Math.round(height * pickCenterFromEdgeRatio)));
         double verticalCenter = 0.492;
         for (int index = 0; index < PICK_Y.length; index++) {
             double yRatio = verticalCenter + (PICK_Y[index] - verticalCenter) * pickSpread + pickYOffset;

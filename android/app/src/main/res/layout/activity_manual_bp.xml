@@ -266,6 +266,16 @@
                 android:textColor="@color/muted"
                 android:textSize="11sp" />
 
+            <Button
+                android:id="@+id/manualMatchupAnalysisButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_outline"
+                android:text="查看阵容对位 · 五路 / 组合 / 全对位"
+                android:textColor="@color/cyan"
+                android:textSize="13sp" />
+
             <LinearLayout
                 android:id="@+id/manualRecommendationSection"
                 android:layout_width="match_parent"

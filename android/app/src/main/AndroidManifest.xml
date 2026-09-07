@@ -30,6 +30,8 @@
             android:name=".ManualBpActivity"
             android:exported="false" />
 
+        <activity android:name=".MatchupAnalysisActivity" android:theme="@style/Theme.XiaGuBP.Analysis" android:exported="false" />
+
         <service
             android:name=".OverlayCaptureService"
             android:exported="false"
