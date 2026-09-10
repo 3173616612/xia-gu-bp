@@ -26,7 +26,7 @@ cd android
 
 Debug unit tests do not require the private release signing key. The build now checks for signing material only when a Release task is present in the Gradle task graph. Release builds still fail closed when the keystore or signing properties are missing.
 
-The GitHub Actions workflow installs Android API 35 and runs the same command for every relevant push and pull request.
+The [GitHub Actions workflow](https://github.com/3173616612/xia-gu-bp/actions/workflows/android-unit-tests.yml) installs Android API 35 and runs the same command for every relevant push and pull request. The first complete run after adding the workflow passed all JVM unit tests on 10 September 2026.
 
 ## Regression design
 
@@ -58,6 +58,7 @@ The API result is treated as a dated observation. It does not freeze rankings or
 - [Repository](https://github.com/3173616612/xia-gu-bp)
 - [Published QA record in Chinese](../android/QA-1.8.0.md)
 - [Android unit test sources](../android/app/src/test/java/com/xiagu/bp)
+- [Android unit test workflow](https://github.com/3173616612/xia-gu-bp/actions/workflows/android-unit-tests.yml)
 - [Release 1.8.0](https://github.com/3173616612/xia-gu-bp/releases/tag/v1.8.0)
 
 The repository and this page are suitable as public evidence of test design, reproducible defect analysis, release verification, and explicit documentation of residual risk. They are not presented as employment history or client work.

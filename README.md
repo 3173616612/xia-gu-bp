@@ -1,5 +1,7 @@
 # 峡谷 BP
 
+[![Android unit tests](https://github.com/3173616612/xia-gu-bp/actions/workflows/android-unit-tests.yml/badge.svg)](https://github.com/3173616612/xia-gu-bp/actions/workflows/android-unit-tests.yml)
+
 面向《王者荣耀》的实时选将助手。站点从天元之弈服务端抓取“巅峰千强”英雄列表、英雄梯度、克制关系与组合关系，支持：
 
 [在线使用](https://xia-gu-bp-live.yxf3173616612.chatgpt.site/) · [下载 Android APK](https://github.com/3173616612/xia-gu-bp/releases/latest) · [Android 使用说明](android/README.md)
