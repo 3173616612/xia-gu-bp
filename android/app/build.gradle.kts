@@ -11,9 +11,21 @@ val releaseSigningProperties = Properties().apply {
         releaseSigningPropertiesFile.inputStream().use(::load)
     }
 }
+val hasReleaseSigning = releaseKeystoreFile.isFile && releaseSigningPropertiesFile.isFile
 val releaseSigningValue = { name: String ->
     releaseSigningProperties.getProperty(name)
         ?: error("Missing $name in ${releaseSigningPropertiesFile.path}")
+}
+
+gradle.taskGraph.whenReady {
+    val releaseTaskRequested = allTasks.any { task ->
+        task.name.contains("release", ignoreCase = true)
+    }
+    if (releaseTaskRequested) {
+        check(hasReleaseSigning) {
+            "Release signing files not found at ${releaseSigningPropertiesFile.path} and ${releaseKeystoreFile.path}"
+        }
+    }
 }
 
 android {
@@ -31,14 +43,13 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            check(releaseKeystoreFile.isFile) {
-                "Release keystore not found at ${releaseKeystoreFile.path}"
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = releaseKeystoreFile
+                storePassword = releaseSigningValue("storePassword")
+                keyAlias = releaseSigningValue("keyAlias")
+                keyPassword = releaseSigningValue("keyPassword")
             }
-            storeFile = releaseKeystoreFile
-            storePassword = releaseSigningValue("storePassword")
-            keyAlias = releaseSigningValue("keyAlias")
-            keyPassword = releaseSigningValue("keyPassword")
         }
     }
 
@@ -46,7 +57,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
