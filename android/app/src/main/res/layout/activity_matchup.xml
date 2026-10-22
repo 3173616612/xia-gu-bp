@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/matchupRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/night"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
+
+        <ImageButton
+            android:id="@+id/matchupBack"
+            style="@style/Widget.XiaGu.IconButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="返回"
+            android:src="@drawable/ic_back" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/Text.Title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:accessibilityHeading="true"
+                android:text="阵容对位" />
+
+            <TextView
+                android:id="@+id/matchupSyncStatus"
+                style="@style/Text.Caption"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:accessibilityLiveRegion="polite"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:text="巅峰千强关系数据" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/matchupRefresh"
+            style="@style/Widget.XiaGu.IconButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="刷新关系数据"
+            android:src="@drawable/ic_refresh" />
+    </LinearLayout>
+
+    <ScrollView
+        android:id="@+id/matchupScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="24dp">
+
+            <RadioGroup
+                android:id="@+id/matchupTabs"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_segment_group"
+                android:orientation="horizontal"
+                android:padding="3dp">
+
+                <RadioButton
+                    android:id="@+id/matchupTabLanes"
+                    style="@style/Widget.XiaGu.Segment"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="五路对位" />
+
+                <RadioButton
+                    android:id="@+id/matchupTabCombos"
+                    style="@style/Widget.XiaGu.Segment"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="2dp"
+                    android:layout_weight="1"
+                    android:text="组合联动" />
+
+                <RadioButton
+                    android:id="@+id/matchupTabMatrix"
+                    style="@style/Widget.XiaGu.Segment"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="2dp"
+                    android:layout_weight="1"
+                    android:text="全对位" />
+            </RadioGroup>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_notice"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:id="@+id/matchupNoticeText"
+                    style="@style/Text.Caption"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/caution_text" />
+
+                <Button
+                    android:id="@+id/matchupEditButton"
+                    style="@style/Widget.XiaGu.Button.Small"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_button_notice"
+                    android:textColor="@color/caution_text" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/matchupUnassigned"
+                style="@style/Text.Caption"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="@color/caution_text"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/matchupBody"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <TextView
+                style="@style/Text.Micro"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="克制指数为正时对我方有利，为负时不利；配合指数为正表示该组合配合良好，敌方同理。指数不是胜率，未收录的关系不代表均势。组合只展示各项证据，不推算 2v2 胜率。" />
+
+            <TextView
+                android:id="@+id/matchupSource"
+                style="@style/Text.Caption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_row_pressable"
+                android:clickable="true"
+                android:focusable="true"
+                android:minHeight="40dp"
+                android:gravity="center_vertical"
+                android:text="数据来源：天元之弈 tianyuanzhiyi.com"
+                android:textColor="@color/ally_text" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

@@ -9,9 +9,10 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.Typeface;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.Image;
@@ -23,6 +24,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.util.DisplayMetrics;
+import android.view.ContextThemeWrapper;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -31,6 +33,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -55,32 +58,27 @@ public final class OverlayCaptureService extends Service {
 
     private static final int NOTIFICATION_ID = 7301;
     private static final String CHANNEL_ID = "bp_projection";
+    private static final int VISIBLE_RECOMMENDATIONS = 3;
 
     private final Handler main = new Handler(android.os.Looper.getMainLooper());
     private WindowManager windowManager;
+    private Context themed;
     private View panel;
-    private Button bubble;
+    private TextView bubble;
     private WindowManager.LayoutParams panelParams;
     private WindowManager.LayoutParams bubbleParams;
     private TextView overlayStatus;
-    private TextView detectedAllies;
-    private TextView detectedEnemies;
-    private TextView detectedBans;
+    private TextView overlayEmpty;
+    private LinearLayout detectedAllies;
+    private LinearLayout detectedEnemies;
+    private LinearLayout detectedBans;
     private TextView detectionIssues;
-    private TextView recommendationOne;
-    private TextView recommendationTwo;
-    private TextView recommendationThree;
-    private View recommendationRowOne;
-    private View recommendationRowTwo;
-    private View recommendationRowThree;
-    private Button dismissRecommendationOne;
-    private Button dismissRecommendationTwo;
-    private Button dismissRecommendationThree;
+    private LinearLayout recommendationList;
     private View detectedSection;
     private View recommendationSection;
     private Button scanButton;
-    private Button switchTeamSideButton;
     private RadioGroup laneGroup;
+    private RadioGroup sideGroup;
 
     private MediaProjection projection;
     private VirtualDisplay virtualDisplay;
@@ -102,6 +100,7 @@ public final class OverlayCaptureService extends Service {
     public void onCreate() {
         super.onCreate();
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        themed = new ContextThemeWrapper(this, R.style.Theme_XiaGuBP);
         laneRecognizer = TextRecognition.getClient(new ChineseTextRecognizerOptions.Builder().build());
         captureThread = new HandlerThread("bp-screen-capture");
         captureThread.start();
@@ -170,33 +169,32 @@ public final class OverlayCaptureService extends Service {
     }
 
     private void createOverlays() {
-        bubble = new Button(this);
+        bubble = new TextView(themed);
         bubble.setText("BP");
-        bubble.setAllCaps(false);
-        bubble.setTextColor(Color.WHITE);
-        bubble.setTextSize(16);
+        bubble.setTextColor(getColor(R.color.frost));
+        bubble.setTextSize(17);
+        bubble.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
         bubble.setGravity(Gravity.CENTER);
-        bubble.setMinWidth(0);
-        bubble.setMinHeight(0);
-        bubble.setPadding(0, 0, 0, 0);
+        bubble.setClickable(true);
+        bubble.setFocusable(true);
         bubble.setContentDescription("展开峡谷 BP 悬浮助手");
-        bubble.setBackgroundResource(R.drawable.bg_overlay_button);
-        bubble.setElevation(dp(12));
+        bubble.setBackgroundResource(R.drawable.bg_bubble);
+        bubble.setElevation(dp(10));
         bubble.setOnClickListener(view -> expandPanel());
 
-        bubbleParams = baseParams(dp(58), dp(58));
+        bubbleParams = baseParams(dp(56), dp(56));
         bubbleParams.gravity = Gravity.TOP | Gravity.END;
         bubbleParams.x = dp(14);
         bubbleParams.y = dp(160);
         windowManager.addView(bubble, bubbleParams);
         attachBubbleGestures();
 
-        FrameLayout overlayRoot = new FrameLayout(this);
-        panel = LayoutInflater.from(this).inflate(R.layout.overlay_panel, overlayRoot, false);
-        panelParams = baseParams(Math.min(dp(330), screenMetrics().widthPixels - dp(24)), panelHeight());
+        FrameLayout overlayRoot = new FrameLayout(themed);
+        panel = LayoutInflater.from(themed).inflate(R.layout.overlay_panel, overlayRoot, false);
+        panelParams = baseParams(panelWidth(), panelHeight());
         panelParams.gravity = Gravity.TOP | Gravity.END;
         panelParams.x = dp(12);
-        panelParams.y = dp(64);
+        panelParams.y = dp(12);
         panel.setVisibility(View.GONE);
         windowManager.addView(panel, panelParams);
         bindPanel();
@@ -216,34 +214,33 @@ public final class OverlayCaptureService extends Service {
         );
     }
 
+    private int panelWidth() {
+        return Math.min(dp(340), screenMetrics().widthPixels - dp(24));
+    }
+
+    /** Fills the landscape height so the top recommendations never need scrolling. */
     private int panelHeight() {
         DisplayMetrics metrics = screenMetrics();
-        return Math.max(dp(120), Math.min(metrics.heightPixels - dp(88), dp(590)));
+        return Math.max(dp(200), Math.min(metrics.heightPixels - dp(24), dp(560)));
     }
 
     private void bindPanel() {
         overlayStatus = panel.findViewById(R.id.overlayStatus);
+        overlayEmpty = panel.findViewById(R.id.overlayEmpty);
         detectedAllies = panel.findViewById(R.id.detectedAllies);
         detectedEnemies = panel.findViewById(R.id.detectedEnemies);
         detectedBans = panel.findViewById(R.id.detectedBans);
         detectionIssues = panel.findViewById(R.id.detectionIssues);
-        recommendationOne = panel.findViewById(R.id.recommendationOne);
-        recommendationTwo = panel.findViewById(R.id.recommendationTwo);
-        recommendationThree = panel.findViewById(R.id.recommendationThree);
-        recommendationRowOne = panel.findViewById(R.id.recommendationRowOne);
-        recommendationRowTwo = panel.findViewById(R.id.recommendationRowTwo);
-        recommendationRowThree = panel.findViewById(R.id.recommendationRowThree);
-        dismissRecommendationOne = panel.findViewById(R.id.dismissRecommendationOne);
-        dismissRecommendationTwo = panel.findViewById(R.id.dismissRecommendationTwo);
-        dismissRecommendationThree = panel.findViewById(R.id.dismissRecommendationThree);
+        recommendationList = panel.findViewById(R.id.overlayRecommendationList);
         detectedSection = panel.findViewById(R.id.detectedSection);
         recommendationSection = panel.findViewById(R.id.recommendationSection);
         scanButton = panel.findViewById(R.id.scanButton);
-        switchTeamSideButton = panel.findViewById(R.id.switchTeamSideButton);
         laneGroup = panel.findViewById(R.id.overlayLaneGroup);
+        sideGroup = panel.findViewById(R.id.overlaySideGroup);
 
         setupLaneButtons();
-        updateTeamSideLabel();
+        setupSideGroup();
+        attachPanelDrag(panel.findViewById(R.id.overlayHeader));
         panel.findViewById(R.id.collapseOverlayButton).setOnClickListener(view -> collapsePanel());
         panel.findViewById(R.id.stopOverlayButton).setOnClickListener(view -> stopSelf());
         scanButton.setOnClickListener(view -> requestCapture());
@@ -251,13 +248,6 @@ public final class OverlayCaptureService extends Service {
             if (activeLineup == null || activeRoster == null) return;
             MatchupAnalysisActivity.open(this, activeRoster, activeLineup, activeAnalyses, null, null);
             collapsePanel();
-        });
-        dismissRecommendationOne.setOnClickListener(view -> dismissVisibleRecommendation(0));
-        dismissRecommendationTwo.setOnClickListener(view -> dismissVisibleRecommendation(1));
-        dismissRecommendationThree.setOnClickListener(view -> dismissVisibleRecommendation(2));
-        switchTeamSideButton.setOnClickListener(view -> {
-            AppPrefs.setOurSideLeft(this, !AppPrefs.ourSideLeft(this));
-            updateTeamSideLabel();
         });
         panel.findViewById(R.id.openFullPanelButton).setOnClickListener(view -> {
             Intent open = new Intent(this, MainActivity.class);
@@ -268,31 +258,57 @@ public final class OverlayCaptureService extends Service {
     }
 
     private void setupLaneButtons() {
+        laneGroup.setOnCheckedChangeListener(null);
         laneGroup.removeAllViews();
         String selected = AppPrefs.lane(this);
-        for (String lane : AppPrefs.LANES) {
-            RadioButton button = new RadioButton(this);
+        for (int index = 0; index < AppPrefs.LANES.size(); index++) {
+            String lane = AppPrefs.LANES.get(index);
+            RadioButton button = new RadioButton(themed, null, 0, R.style.Widget_XiaGu_Chip_Lane);
             button.setId(View.generateViewId());
             button.setTag(lane);
             button.setText(lane);
-            button.setTextColor(Color.WHITE);
-            button.setTextSize(11);
-            button.setGravity(Gravity.CENTER);
-            button.setButtonDrawable(null);
-            button.setBackgroundResource(R.drawable.bg_chip);
-            button.setPadding(dp(12), 0, dp(12), 0);
-            RadioGroup.LayoutParams params = new RadioGroup.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                dp(38)
-            );
-            params.setMarginEnd(dp(6));
+            RadioGroup.LayoutParams params = new RadioGroup.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+            if (index > 0) params.setMarginStart(dp(4));
             laneGroup.addView(button, params);
-            button.setChecked(lane.equals(selected));
+            if (lane.equals(selected)) laneGroup.check(button.getId());
         }
         laneGroup.setOnCheckedChangeListener((group, checkedId) -> {
             View checked = group.findViewById(checkedId);
-            if (checked != null && checked.getTag() instanceof String lane) AppPrefs.setLane(this, lane);
+            if (!(checked != null && checked.getTag() instanceof String lane)) return;
+            AppPrefs.setLane(this, lane);
+            // Switching lanes reuses the scanned lineup and relations; no new capture needed.
+            if (activeLineup != null && activeAnalyses != null) refreshRecommendations("已换成" + lane + "推荐");
         });
+    }
+
+    private void setupSideGroup() {
+        sideGroup.setOnCheckedChangeListener(null);
+        sideGroup.check(AppPrefs.ourSideLeft(this) ? R.id.overlaySideLeft : R.id.overlaySideRight);
+        sideGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            boolean ourLeft = checkedId == R.id.overlaySideLeft;
+            if (ourLeft == AppPrefs.ourSideLeft(this)) return;
+            AppPrefs.setOurSideLeft(this, ourLeft);
+            // The two columns were recognised correctly; only their owner changes, so swap and re-score.
+            if (activeLineup != null) {
+                swapSides(activeLineup);
+                showDetected(activeLineup);
+                if (activeAnalyses != null) refreshRecommendations("已互换我方与敌方");
+            }
+        });
+    }
+
+    private void swapSides(BpModels.DetectedLineup lineup) {
+        List<BpModels.Hero> previousAllies = new ArrayList<>(lineup.allies);
+        lineup.allies.clear();
+        lineup.allies.addAll(lineup.enemies);
+        lineup.enemies.clear();
+        lineup.enemies.addAll(previousAllies);
+        for (int i = 0; i < lineup.issues.size(); i++) {
+            if (lineup.issues.get(i).startsWith("当前为我方 ")) {
+                lineup.issues.set(i, "当前为我方 " + lineup.allies.size() + " 人、敌方 " + lineup.enemies.size()
+                    + " 人；按画面现有阵容计算，不强制补齐五路。");
+            }
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -313,6 +329,7 @@ public final class OverlayCaptureService extends Service {
                         startX = bubbleParams.x;
                         startY = bubbleParams.y;
                         moved = false;
+                        view.setPressed(true);
                         return true;
                     }
                     case MotionEvent.ACTION_MOVE -> {
@@ -325,7 +342,12 @@ public final class OverlayCaptureService extends Service {
                         return true;
                     }
                     case MotionEvent.ACTION_UP -> {
+                        view.setPressed(false);
                         if (!moved) view.performClick();
+                        return true;
+                    }
+                    case MotionEvent.ACTION_CANCEL -> {
+                        view.setPressed(false);
                         return true;
                     }
                     default -> { return false; }
@@ -334,9 +356,72 @@ public final class OverlayCaptureService extends Service {
         });
     }
 
+    /** The panel can be dragged by its header so it never has to cover the part of the game you need. */
+    @SuppressLint("ClickableViewAccessibility")
+    private void attachPanelDrag(View handle) {
+        handle.setOnTouchListener(new View.OnTouchListener() {
+            private float downX;
+            private float downY;
+            private int startX;
+            private int startY;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN -> {
+                        downX = event.getRawX();
+                        downY = event.getRawY();
+                        startX = panelParams.x;
+                        startY = panelParams.y;
+                        return true;
+                    }
+                    case MotionEvent.ACTION_MOVE -> {
+                        DisplayMetrics metrics = screenMetrics();
+                        int maxX = Math.max(0, metrics.widthPixels - panelParams.width);
+                        int maxY = Math.max(0, metrics.heightPixels - panelParams.height);
+                        panelParams.x = clamp(startX - Math.round(event.getRawX() - downX), 0, maxX);
+                        panelParams.y = clamp(startY + Math.round(event.getRawY() - downY), 0, maxY);
+                        windowManager.updateViewLayout(panel, panelParams);
+                        return true;
+                    }
+                    case MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        return true;
+                    }
+                    default -> { return false; }
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration configuration) {
+        super.onConfigurationChanged(configuration);
+        fitOverlaysToScreen();
+    }
+
+    private void fitOverlaysToScreen() {
+        if (windowManager == null) return;
+        DisplayMetrics metrics = screenMetrics();
+        if (panel != null && panelParams != null) {
+            panelParams.width = panelWidth();
+            panelParams.height = panelHeight();
+            panelParams.x = clamp(panelParams.x, 0, Math.max(0, metrics.widthPixels - panelParams.width));
+            panelParams.y = clamp(panelParams.y, 0, Math.max(0, metrics.heightPixels - panelParams.height));
+            windowManager.updateViewLayout(panel, panelParams);
+        }
+        if (bubble != null && bubbleParams != null) {
+            bubbleParams.x = clamp(bubbleParams.x, 0, Math.max(0, metrics.widthPixels - bubbleParams.width));
+            bubbleParams.y = clamp(bubbleParams.y, 0, Math.max(0, metrics.heightPixels - bubbleParams.height));
+            windowManager.updateViewLayout(bubble, bubbleParams);
+        }
+    }
+
     private void expandPanel() {
-        panelParams.width = Math.min(dp(330), screenMetrics().widthPixels - dp(24));
+        panelParams.width = panelWidth();
         panelParams.height = panelHeight();
+        DisplayMetrics metrics = screenMetrics();
+        panelParams.x = clamp(panelParams.x, 0, Math.max(0, metrics.widthPixels - panelParams.width));
+        panelParams.y = clamp(panelParams.y, 0, Math.max(0, metrics.heightPixels - panelParams.height));
         windowManager.updateViewLayout(panel, panelParams);
         panel.setVisibility(View.VISIBLE);
         bubble.setVisibility(View.GONE);
@@ -355,6 +440,7 @@ public final class OverlayCaptureService extends Service {
         resetRecommendationSession();
         overlayStatus.setText("正在隐藏悬浮窗并截取当前画面…");
         scanButton.setEnabled(false);
+        scanButton.setText("识别中…");
         panel.setVisibility(View.INVISIBLE);
         bubble.setVisibility(View.INVISIBLE);
         main.postDelayed(() -> {
@@ -527,14 +613,15 @@ public final class OverlayCaptureService extends Service {
         BpApiClient.loadAnalyses(selected, new BpApiClient.Callback<>() {
             @Override
             public void onSuccess(Map<Integer, BpModels.Analysis> analyses) {
+                if (activeLineup != lineup) return;
                 activeRoster = heroes;
                 activeAnalyses = analyses;
-                activeLineup = lineup;
                 refreshRecommendations(null);
                 String tierDate = BpApiClient.latestTierDate();
-                overlayStatus.setText("天元直连完成" + (tierDate.isBlank() ? "" : " · " + tierDate)
-                    + " · " + AppPrefs.lane(OverlayCaptureService.this) + "推荐已更新");
+                overlayStatus.setText(AppPrefs.lane(OverlayCaptureService.this) + "推荐已更新"
+                    + (tierDate.isBlank() ? "" : "，梯度 " + shortDate(tierDate)));
                 scanButton.setEnabled(true);
+                scanButton.setText("重新识别");
             }
 
             @Override
@@ -545,10 +632,14 @@ public final class OverlayCaptureService extends Service {
     }
 
     private void showDetected(BpModels.DetectedLineup lineup) {
+        overlayEmpty.setVisibility(View.GONE);
         detectedSection.setVisibility(View.VISIBLE);
-        detectedAllies.setText("我方：" + heroNames(lineup.allies));
-        detectedEnemies.setText("敌方：" + heroNames(lineup.enemies));
-        detectedBans.setText("BAN：" + heroNames(lineup.bans));
+        fillStrip(detectedAllies, lineup.allies, getColor(R.color.ally), false, 5);
+        fillStrip(detectedEnemies, lineup.enemies, getColor(R.color.enemy), false, 5);
+        fillStrip(detectedBans, lineup.bans, 0, true, 0);
+        detectedAllies.setContentDescription("我方：" + heroNames(lineup.allies));
+        detectedEnemies.setContentDescription("敌方：" + heroNames(lineup.enemies));
+        detectedBans.setContentDescription("BAN：" + heroNames(lineup.bans));
         if (lineup.issues.isEmpty()) {
             detectionIssues.setVisibility(View.GONE);
         } else {
@@ -557,32 +648,76 @@ public final class OverlayCaptureService extends Service {
         }
     }
 
+    /** Portrait strip; unfilled pick slots are drawn dashed so missing recognitions are visible. */
+    private void fillStrip(LinearLayout strip, List<BpModels.Hero> heroes, int ringColor, boolean banned, int minimumSlots) {
+        strip.removeAllViews();
+        strip.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        int size = dp(26);
+        int count = Math.max(heroes.size(), minimumSlots);
+        if (count == 0) {
+            TextView none = new TextView(themed, null, 0, R.style.Text_Micro);
+            none.setText("未识别到");
+            strip.addView(none);
+            return;
+        }
+        for (int i = 0; i < count; i++) {
+            HeroAvatarView avatar = new HeroAvatarView(themed);
+            avatar.setCornerRadiusDp(6);
+            HeroAvatars.bind(avatar, i < heroes.size() ? heroes.get(i) : null);
+            if (banned) avatar.setBanned(true);
+            else if (ringColor != 0 && i < heroes.size()) avatar.setRing(ringColor, 1.5f);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(size, size);
+            if (i > 0) params.setMarginStart(dp(5));
+            strip.addView(avatar, params);
+        }
+    }
+
     private void showRecommendations(List<BpModels.Recommendation> recommendations) {
+        overlayEmpty.setVisibility(View.GONE);
         recommendationSection.setVisibility(View.VISIBLE);
         visibleRecommendations.clear();
-        TextView[] rows = {recommendationOne, recommendationTwo, recommendationThree};
-        View[] containers = {recommendationRowOne, recommendationRowTwo, recommendationRowThree};
-        Button[] dismissButtons = {
-            dismissRecommendationOne,
-            dismissRecommendationTwo,
-            dismissRecommendationThree
-        };
-        for (int i = 0; i < rows.length; i++) {
-            if (i < recommendations.size()) {
-                BpModels.Recommendation value = recommendations.get(i);
-                visibleRecommendations.add(value);
-                containers[i].setVisibility(View.VISIBLE);
-                dismissButtons[i].setVisibility(View.VISIBLE);
-                dismissButtons[i].setContentDescription("不想玩" + value.hero.name);
-                rows[i].setText((i + 1) + "  " + value.hero.name + "   " + value.score + "\n" + value.summary);
-            } else {
-                containers[i].setVisibility(View.GONE);
-            }
-        }
+        recommendationList.removeAllViews();
         if (recommendations.isEmpty()) {
-            recommendationRowOne.setVisibility(View.VISIBLE);
-            dismissRecommendationOne.setVisibility(View.GONE);
-            recommendationOne.setText("暂无符合该分路的可用候选，请切换分路或重新识别阵容与 BAN 位。");
+            TextView empty = new TextView(themed, null, 0, R.style.Text_Caption);
+            empty.setText("这个分路暂时没有可推荐的英雄。换一个分路，或重新识别阵容与 BAN 位。");
+            empty.setPadding(0, dp(12), 0, dp(4));
+            recommendationList.addView(empty);
+            return;
+        }
+        boolean hasEnemies = activeLineup != null && !activeLineup.enemies.isEmpty();
+        boolean hasAllies = activeLineup != null && !activeLineup.allies.isEmpty();
+        LayoutInflater inflater = LayoutInflater.from(themed);
+        int shown = Math.min(VISIBLE_RECOMMENDATIONS, recommendations.size());
+        for (int i = 0; i < shown; i++) {
+            BpModels.Recommendation value = recommendations.get(i);
+            visibleRecommendations.add(value);
+            View row = inflater.inflate(R.layout.item_overlay_recommendation, recommendationList, false);
+            boolean first = i == 0;
+            TextView rank = row.findViewById(R.id.ovRank);
+            rank.setText(String.valueOf(i + 1));
+            rank.setTextColor(getColor(first ? R.color.crown : R.color.dusk));
+            HeroAvatarView avatar = row.findViewById(R.id.ovAvatar);
+            HeroAvatars.bind(avatar, value.hero);
+            avatar.setRing(first ? getColor(R.color.crown) : 0, 2);
+            ((TextView) row.findViewById(R.id.ovName)).setText(value.hero.name);
+            List<String> parts = new ArrayList<>();
+            if (hasEnemies) parts.add("对敌 " + value.matchupScore);
+            if (hasAllies) parts.add("配合 " + value.synergyScore);
+            if (hasEnemies) parts.add("提升 " + value.counterLiftScore);
+            else parts.add("梯度 " + value.tierScore);
+            if (value.secondaryRole) parts.add("多位置");
+            ((TextView) row.findViewById(R.id.ovMeta)).setText(String.join("  ", parts));
+            TextView score = row.findViewById(R.id.ovScore);
+            score.setText(String.valueOf(value.score));
+            score.setTextColor(getColor(first ? R.color.crown : R.color.frost));
+            row.findViewById(R.id.ovSummary).setContentDescription("第 " + (i + 1) + " 名，" + value.hero.name
+                + "，推荐分 " + value.score + "，" + String.join("，", parts));
+            Button skip = row.findViewById(R.id.ovSkip);
+            skip.setContentDescription("不想玩" + value.hero.name + "，换下一位");
+            final int index = i;
+            skip.setOnClickListener(view -> dismissVisibleRecommendation(index));
+            row.findViewById(R.id.ovDivider).setVisibility(i == shown - 1 ? View.GONE : View.VISIBLE);
+            recommendationList.addView(row);
         }
     }
 
@@ -590,7 +725,7 @@ public final class OverlayCaptureService extends Service {
         if (index < 0 || index >= visibleRecommendations.size()) return;
         BpModels.Hero removed = visibleRecommendations.get(index).hero;
         if (!dismissedHeroIds.add(removed.id)) return;
-        refreshRecommendations("已移除“" + removed.name + "”，后续英雄已按原顺位补上");
+        refreshRecommendations("已跳过“" + removed.name + "”，后面的英雄按顺位补上");
     }
 
     private void refreshRecommendations(String status) {
@@ -604,7 +739,7 @@ public final class OverlayCaptureService extends Service {
         );
         showRecommendations(recommendations);
         if (status != null) {
-            overlayStatus.setText(status + " · 本次已移除 " + dismissedHeroIds.size() + " 位");
+            overlayStatus.setText(dismissedHeroIds.isEmpty() ? status : status + "，本次已跳过 " + dismissedHeroIds.size() + " 位");
         }
     }
 
@@ -621,6 +756,7 @@ public final class OverlayCaptureService extends Service {
     private void finishWithError(String message) {
         restorePanel(message);
         scanButton.setEnabled(true);
+        scanButton.setText(activeLineup == null ? "识别 BP 画面" : "重新识别");
     }
 
     private void restorePanel(String status) {
@@ -636,8 +772,12 @@ public final class OverlayCaptureService extends Service {
         return String.join("、", names);
     }
 
-    private void updateTeamSideLabel() {
-        switchTeamSideButton.setText(AppPrefs.ourSideLeft(this) ? "我方在左" : "我方在右");
+    private static String shortDate(String date) {
+        return date.length() == 10 && date.charAt(4) == '-' ? date.substring(5) : date;
+    }
+
+    private static int clamp(int value, int minimum, int maximum) {
+        return Math.max(minimum, Math.min(maximum, value));
     }
 
     private DisplayMetrics screenMetrics() {

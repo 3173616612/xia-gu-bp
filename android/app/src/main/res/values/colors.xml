@@ -1,17 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ink">#F5F8FF</color>
-    <color name="muted">#9CAECD</color>
-    <color name="muted_2">#6F82A4</color>
+    <!-- Surfaces: night → deck → deck_2, separated by seams. -->
+    <color name="night">#0B1020</color>
+    <color name="deck">#141B2E</color>
+    <color name="deck_2">#1C2540</color>
+    <color name="deck_sunk">#0E1426</color>
+    <color name="overlay_footer">#11182A</color>
+    <color name="seam">#2A3554</color>
+    <color name="seam_2">#3A4870</color>
+
+    <!-- Text -->
+    <color name="frost">#E8ECF5</color>
+    <color name="mist">#9BA6BF</color>
+    <color name="dusk">#66718C</color>
+
+    <!-- Gold marks the user's move: primary action, target lane, first pick. -->
+    <color name="crown">#F0BC4E</color>
+    <color name="crown_ink">#1E1606</color>
+    <color name="crown_soft">#2E2615</color>
+    <color name="crown_line">#7A6026</color>
+    <color name="crown_dim">#B8964A</color>
+
+    <!-- Sides: blue is always us, red is always them. -->
+    <color name="ally">#4B8BFF</color>
+    <color name="ally_soft">#15264A</color>
+    <color name="ally_text">#9CC0FF</color>
+    <color name="ally_line">#3466C2</color>
+    <color name="enemy">#F04E66</color>
+    <color name="enemy_soft">#3B1724</color>
+    <color name="enemy_text">#FF8A9B</color>
+    <color name="enemy_line">#5A2333</color>
+
+    <!-- Evidence: favorable / unfavorable / near even. -->
+    <color name="edge">#2FCFA0</color>
+    <color name="edge_soft">#10302B</color>
+    <color name="edge_line">#1D5C4E</color>
+    <color name="caution">#F2A33A</color>
+    <color name="caution_soft">#33270F</color>
+    <color name="caution_line">#5C4416</color>
+    <color name="caution_text">#F6C27A</color>
+
+    <!-- Adaptive launcher icon background, unchanged from 1.8.0. -->
     <color name="background">#060D19</color>
-    <color name="panel">#0C1729</color>
-    <color name="panel_2">#112039</color>
-    <color name="line">#223B61</color>
-    <color name="blue">#6495FF</color>
-    <color name="cyan">#4CE1D7</color>
-    <color name="gold">#F2C86A</color>
-    <color name="gold_dark">#9C6E22</color>
-    <color name="gold_surface">#2A2114</color>
-    <color name="danger">#FF6A7E</color>
-    <color name="warning">#FFD074</color>
+
+    <color name="ripple_light">#24FFFFFF</color>
+    <color name="ripple_dark">#33000000</color>
 </resources>

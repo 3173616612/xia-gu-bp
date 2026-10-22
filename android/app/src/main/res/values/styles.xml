@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Type scale (sp): 20 / 18 / 16 / 14 / 13 / 12 / 11. Chinese text never goes below 11sp.
+         Numbers and short Latin labels (scores, tiers, BAN) use the condensed face. -->
+    <style name="Text">
+        <item name="android:textColor">@color/frost</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:includeFontPadding">true</item>
+    </style>
+    <style name="Text.Display">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="Text.Title">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="Text.Heading">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="Text.Body">
+        <item name="android:textSize">14sp</item>
+        <item name="android:lineSpacingExtra">3dp</item>
+    </style>
+    <style name="Text.Name">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+    <style name="Text.Label">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/mist</item>
+    </style>
+    <style name="Text.Caption">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/mist</item>
+        <item name="android:lineSpacingExtra">3dp</item>
+    </style>
+    <style name="Text.Micro">
+        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">@color/dusk</item>
+        <item name="android:lineSpacingExtra">3dp</item>
+    </style>
+    <style name="Text.Number">
+        <item name="android:fontFamily">sans-serif-condensed</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+    <style name="Text.Number.Score">
+        <item name="android:textSize">30sp</item>
+    </style>
+    <style name="Text.Number.Rank">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">@color/dusk</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <!-- Buttons: flat, no press elevation, sentence-case labels. -->
+    <style name="Widget.XiaGu.Button" parent="android:style/Widget.Material.Button">
+        <item name="android:background">@drawable/bg_button_secondary</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:elevation">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:paddingTop">0dp</item>
+        <item name="android:paddingBottom">0dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/frost</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:gravity">center</item>
+        <item name="android:maxLines">1</item>
+    </style>
+    <style name="Widget.XiaGu.Button.Primary">
+        <item name="android:background">@drawable/bg_button_primary</item>
+        <item name="android:textColor">@color/text_primary_button</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="Widget.XiaGu.Button.Secondary" />
+    <style name="Widget.XiaGu.Button.Small">
+        <item name="android:textSize">12sp</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+    </style>
+    <style name="Widget.XiaGu.Button.Small.GoldLine">
+        <item name="android:background">@drawable/bg_button_gold_line</item>
+        <item name="android:textColor">@color/crown</item>
+    </style>
+    <style name="Widget.XiaGu.Button.Small.DangerLine">
+        <item name="android:background">@drawable/bg_button_danger_line</item>
+        <item name="android:textColor">@color/enemy_text</item>
+    </style>
+    <style name="Widget.XiaGu.Button.Small.Ghost">
+        <item name="android:background">@drawable/bg_button_ghost</item>
+        <item name="android:textColor">@color/mist</item>
+    </style>
+
+    <style name="Widget.XiaGu.IconButton" parent="android:style/Widget.Material.ImageButton">
+        <item name="android:background">@drawable/bg_icon_button</item>
+        <item name="android:scaleType">center</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:padding">0dp</item>
+    </style>
+
+    <!-- Segmented controls and chips are RadioButtons inside RadioGroups (radio semantics for TalkBack). -->
+    <style name="Widget.XiaGu.Segment" parent="android:style/Widget.Material.CompoundButton.RadioButton">
+        <item name="android:button">@null</item>
+        <item name="android:background">@drawable/bg_segment</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/text_selectable</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingEnd">4dp</item>
+        <item name="android:maxLines">1</item>
+    </style>
+    <style name="Widget.XiaGu.Chip" parent="android:style/Widget.Material.CompoundButton.RadioButton">
+        <item name="android:button">@null</item>
+        <item name="android:background">@drawable/bg_chip</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/text_selectable</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingStart">11dp</item>
+        <item name="android:paddingEnd">11dp</item>
+        <item name="android:maxLines">1</item>
+    </style>
+    <style name="Widget.XiaGu.Chip.Lane">
+        <item name="android:background">@drawable/bg_lane_chip</item>
+        <item name="android:paddingStart">2dp</item>
+        <item name="android:paddingEnd">2dp</item>
+    </style>
+</resources>

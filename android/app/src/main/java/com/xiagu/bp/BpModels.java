@@ -69,6 +69,9 @@ final class BpModels {
         int tierScore;
         int negativePenalty;
         boolean secondaryRole;
+        /** Relations with data out of all enemy + ally pairs considered (shown as coverage, not weight). */
+        int knownRelations;
+        int totalRelations;
         String summary = "";
     }
 }

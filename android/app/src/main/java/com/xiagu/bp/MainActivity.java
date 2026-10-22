@@ -6,74 +6,98 @@ import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
-import android.media.projection.MediaProjectionManager;
+import android.graphics.Paint;
+import android.graphics.drawable.GradientDrawable;
 import android.media.projection.MediaProjectionConfig;
+import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
+/** Launch pad: data status, floating-assistant setup and start, manual BP entry, about. */
 public final class MainActivity extends Activity {
     private static final int REQUEST_OVERLAY = 4101;
     private static final int REQUEST_CAPTURE = 4102;
     private static final int REQUEST_NOTIFICATIONS = 4103;
 
     private Button startAssistantButton;
+    private Button grantOverlayButton;
+    private ImageView overlayPermissionIcon;
+    private ImageView capturePermissionIcon;
     private TextView overlayPermissionStatus;
     private TextView capturePermissionStatus;
     private TextView mainStatus;
     private TextView dataStatus;
     private RadioGroup laneGroup;
     private RadioGroup teamSideGroup;
+    private DraftScreenDiagram diagram;
     private final XiaGuBpApplication.Listener bootstrapListener = this::showBootstrapState;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Ui.padForSystemBars(findViewById(R.id.mainRoot));
         bindViews();
-        setupLaneButtons(laneGroup, AppPrefs.lane(this));
+        setupLaneButtons(AppPrefs.lane(this));
         setupTeamSide();
         setupActions();
+        showVersion();
         refreshPermissionState();
-        startAssistantButton.setEnabled(false);
-        startAssistantButton.setText("正在初始化头像库…");
         application().addBootstrapListener(bootstrapListener);
     }
 
     private void bindViews() {
         startAssistantButton = findViewById(R.id.startAssistantButton);
+        grantOverlayButton = findViewById(R.id.grantOverlayButton);
+        overlayPermissionIcon = findViewById(R.id.overlayPermissionIcon);
+        capturePermissionIcon = findViewById(R.id.capturePermissionIcon);
         overlayPermissionStatus = findViewById(R.id.overlayPermissionStatus);
         capturePermissionStatus = findViewById(R.id.capturePermissionStatus);
         mainStatus = findViewById(R.id.mainStatus);
         dataStatus = findViewById(R.id.dataStatus);
         laneGroup = findViewById(R.id.laneGroup);
         teamSideGroup = findViewById(R.id.teamSideGroup);
+        diagram = findViewById(R.id.draftDiagram);
+        findViewById(R.id.mainLogo).setClipToOutline(true);
+        TextView source = findViewById(R.id.sourceLinkText);
+        source.setPaintFlags(source.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+        TextView author = findViewById(R.id.authorLinkText);
+        author.setPaintFlags(author.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
     }
 
     private void setupActions() {
-        findViewById(R.id.grantOverlayButton).setOnClickListener(view -> requestOverlayPermission());
+        grantOverlayButton.setOnClickListener(view -> requestOverlayPermission());
         startAssistantButton.setOnClickListener(view -> startAssistantFlow());
         findViewById(R.id.manualBpButton).setOnClickListener(view ->
             startActivity(new Intent(this, ManualBpActivity.class))
         );
         findViewById(R.id.sourceLink).setOnClickListener(view ->
-            openUri(Uri.parse("https://tianyuanzhiyi.com/"), "未找到可打开网页的应用。")
+            openUri(Uri.parse("https://tianyuanzhiyi.com/"), "没有找到可以打开网页的应用。")
         );
         findViewById(R.id.authorLink).setOnClickListener(view ->
-            openUri(Uri.parse("mailto:3173616612@qq.com"), "未找到可发送邮件的应用。")
+            openUri(Uri.parse("mailto:3173616612@qq.com"), "没有找到可以发送邮件的应用。")
         );
         findViewById(R.id.donateButton).setOnClickListener(view -> showDonationDialog());
+    }
+
+    private void showVersion() {
+        TextView version = findViewById(R.id.versionText);
+        try {
+            String name = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            version.setText("版本 " + name);
+        } catch (PackageManager.NameNotFoundException | RuntimeException ignored) {
+            version.setVisibility(View.GONE);
+        }
     }
 
     private void openUri(Uri uri, String failureMessage) {
@@ -85,7 +109,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showDonationDialog() {
-        Dialog dialog = new Dialog(this);
+        Dialog dialog = new Dialog(this, R.style.Theme_XiaGuBP_Dialog);
         dialog.setContentView(R.layout.dialog_donation);
         dialog.setCanceledOnTouchOutside(true);
         dialog.findViewById(R.id.closeDonationButton).setOnClickListener(view -> dialog.dismiss());
@@ -93,46 +117,35 @@ public final class MainActivity extends Activity {
 
         Window window = dialog.getWindow();
         if (window == null) return;
-        window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-        WindowManager.LayoutParams attributes = window.getAttributes();
-        attributes.dimAmount = 0.76f;
-        window.setAttributes(attributes);
-        int availableWidth = getResources().getDisplayMetrics().widthPixels - dp(32);
-        window.setLayout(Math.min(availableWidth, dp(390)), WindowManager.LayoutParams.WRAP_CONTENT);
+        int availableWidth = getResources().getDisplayMetrics().widthPixels - Ui.dp(this, 32);
+        window.setLayout(Math.min(availableWidth, Ui.dp(this, 360)), WindowManager.LayoutParams.WRAP_CONTENT);
     }
 
     private void setupTeamSide() {
         boolean left = AppPrefs.ourSideLeft(this);
         teamSideGroup.check(left ? R.id.teamLeft : R.id.teamRight);
-        teamSideGroup.setOnCheckedChangeListener((group, checkedId) ->
-            AppPrefs.setOurSideLeft(this, checkedId == R.id.teamLeft)
-        );
+        diagram.setOurSideLeft(left);
+        teamSideGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            boolean ourLeft = checkedId == R.id.teamLeft;
+            AppPrefs.setOurSideLeft(this, ourLeft);
+            diagram.setOurSideLeft(ourLeft);
+        });
     }
 
-    private void setupLaneButtons(RadioGroup group, String selected) {
-        group.removeAllViews();
-        int horizontalPadding = dp(14);
-        for (String lane : AppPrefs.LANES) {
-            RadioButton button = new RadioButton(this);
+    private void setupLaneButtons(String selected) {
+        laneGroup.removeAllViews();
+        for (int index = 0; index < AppPrefs.LANES.size(); index++) {
+            String lane = AppPrefs.LANES.get(index);
+            RadioButton button = new RadioButton(this, null, 0, R.style.Widget_XiaGu_Segment);
             button.setId(View.generateViewId());
             button.setTag(lane);
             button.setText(lane);
-            button.setTextColor(Color.WHITE);
-            button.setTextSize(12);
-            button.setGravity(android.view.Gravity.CENTER);
-            button.setButtonDrawable(null);
-            button.setBackgroundResource(R.drawable.bg_chip);
-            button.setPadding(horizontalPadding, 0, horizontalPadding, 0);
-            RadioGroup.LayoutParams params = new RadioGroup.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                dp(42)
-            );
-            params.setMarginEnd(dp(7));
-            group.addView(button, params);
-            button.setChecked(lane.equals(selected));
+            RadioGroup.LayoutParams params = new RadioGroup.LayoutParams(0, RadioGroup.LayoutParams.MATCH_PARENT, 1f);
+            if (index > 0) params.setMarginStart(Ui.dp(this, 2));
+            laneGroup.addView(button, params);
+            if (lane.equals(selected)) laneGroup.check(button.getId());
         }
-        group.setOnCheckedChangeListener((radioGroup, checkedId) -> {
+        laneGroup.setOnCheckedChangeListener((radioGroup, checkedId) -> {
             View checked = radioGroup.findViewById(checkedId);
             if (checked != null && checked.getTag() instanceof String lane) AppPrefs.setLane(this, lane);
         });
@@ -140,7 +153,7 @@ public final class MainActivity extends Activity {
 
     private void startAssistantFlow() {
         if (!Settings.canDrawOverlays(this)) {
-            mainStatus.setText("请先允许悬浮窗权限，返回后再次点击启动。");
+            mainStatus.setText("先允许“显示在其他应用上层”，返回后再点一次启动。");
             requestOverlayPermission();
             return;
         }
@@ -148,8 +161,8 @@ public final class MainActivity extends Activity {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS);
         }
         MediaProjectionManager manager = getSystemService(MediaProjectionManager.class);
-        capturePermissionStatus.setText("屏幕识别权限 · 等待系统确认");
-        mainStatus.setText("请在系统弹窗中允许一次屏幕共享；英雄头像只在设备内识别。 ");
+        capturePermissionStatus.setText("等待系统确认");
+        mainStatus.setText("请在系统弹窗中允许屏幕共享。英雄头像只在本机识别，截图不会上传。");
         Intent captureIntent = Build.VERSION.SDK_INT >= 34
             ? manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
             : manager.createScreenCaptureIntent();
@@ -161,7 +174,11 @@ public final class MainActivity extends Activity {
             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
             Uri.parse("package:" + getPackageName())
         );
-        startActivityForResult(intent, REQUEST_OVERLAY);
+        try {
+            startActivityForResult(intent, REQUEST_OVERLAY);
+        } catch (ActivityNotFoundException exception) {
+            mainStatus.setText("无法打开权限设置，请在系统设置里为峡谷 BP 开启“显示在其他应用上层”。");
+        }
     }
 
     @Override
@@ -169,8 +186,9 @@ public final class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_CAPTURE) {
             if (resultCode != RESULT_OK || data == null) {
-                capturePermissionStatus.setText("屏幕识别权限 · 已取消");
-                mainStatus.setText("未获得截图授权，悬浮助手尚未启动。");
+                capturePermissionStatus.setText("已取消，悬浮助手没有启动");
+                capturePermissionIcon.setImageResource(R.drawable.ic_alert_circle);
+                mainStatus.setText("没有获得屏幕录制授权，悬浮助手没有启动。");
                 return;
             }
             Intent service = new Intent(this, OverlayCaptureService.class);
@@ -179,8 +197,9 @@ public final class MainActivity extends Activity {
             service.putExtra(OverlayCaptureService.EXTRA_RESULT_DATA, data);
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(service);
             else startService(service);
-            capturePermissionStatus.setText("屏幕识别权限 · 本次会话已授权");
-            mainStatus.setText("悬浮助手已启动。现在可以切回游戏并点击 BP 按钮。");
+            capturePermissionStatus.setText("本次已允许，只在点识别时截取一帧");
+            capturePermissionIcon.setImageResource(R.drawable.ic_check_circle);
+            mainStatus.setText("悬浮助手已启动。切回游戏，在选将界面点 BP 悬浮球。");
         }
     }
 
@@ -192,8 +211,10 @@ public final class MainActivity extends Activity {
 
     private void refreshPermissionState() {
         boolean granted = Settings.canDrawOverlays(this);
-        overlayPermissionStatus.setText(granted ? "悬浮窗权限 · 已授权" : "悬浮窗权限 · 未授权");
-        overlayPermissionStatus.setTextColor(getColor(granted ? R.color.cyan : R.color.warning));
+        overlayPermissionStatus.setText(granted ? "已允许" : "未允许，悬浮窗需要这项权限");
+        overlayPermissionStatus.setTextColor(getColor(granted ? R.color.mist : R.color.caution_text));
+        overlayPermissionIcon.setImageResource(granted ? R.drawable.ic_check_circle : R.drawable.ic_alert_circle);
+        grantOverlayButton.setVisibility(granted ? View.GONE : View.VISIBLE);
     }
 
     private XiaGuBpApplication application() {
@@ -203,36 +224,42 @@ public final class MainActivity extends Activity {
     private void showBootstrapState(XiaGuBpApplication.BootstrapState state) {
         switch (state.phase()) {
             case SYNCING -> {
-                dataStatus.setText("实时数据 · 正在同步英雄库");
+                setDataStatus("正在同步英雄库", R.color.caution);
                 startAssistantButton.setEnabled(false);
                 startAssistantButton.setText("正在同步英雄库…");
             }
             case BUILDING -> {
-                dataStatus.setText("头像识别 · 正在准备 " + state.heroCount() + " 位英雄");
+                setDataStatus("正在准备 " + state.heroCount() + " 位英雄头像", R.color.caution);
                 startAssistantButton.setEnabled(false);
-                startAssistantButton.setText("正在初始化头像库…");
+                startAssistantButton.setText("正在准备头像库…");
             }
             case READY -> {
-                dataStatus.setText("实时数据已就绪 · " + state.heroCount() + " 位英雄");
+                setDataStatus(state.heroCount() + " 位英雄已就绪", R.color.edge);
                 startAssistantButton.setEnabled(true);
                 startAssistantButton.setText("启动悬浮助手");
             }
             case ERROR -> {
-                dataStatus.setText("数据初始化失败");
-                mainStatus.setText("头像库未完成初始化，请联网后重新启动应用。\n" + state.message());
+                setDataStatus("数据同步失败", R.color.enemy);
+                mainStatus.setText("头像库没有准备好。请检查网络后重新打开应用。\n" + state.message());
                 startAssistantButton.setEnabled(false);
-                startAssistantButton.setText("头像库尚未就绪");
+                startAssistantButton.setText("头像库未就绪");
             }
         }
+    }
+
+    private void setDataStatus(String text, int dotColorRes) {
+        dataStatus.setText(text);
+        GradientDrawable dot = new GradientDrawable();
+        dot.setShape(GradientDrawable.OVAL);
+        dot.setColor(getColor(dotColorRes));
+        int size = Ui.dp(this, 7);
+        dot.setSize(size, size);
+        dataStatus.setCompoundDrawablesRelativeWithIntrinsicBounds(dot, null, null, null);
     }
 
     @Override
     protected void onDestroy() {
         application().removeBootstrapListener(bootstrapListener);
         super.onDestroy();
-    }
-
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 }

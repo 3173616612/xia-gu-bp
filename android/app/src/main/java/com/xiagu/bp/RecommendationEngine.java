@@ -77,6 +77,8 @@ final class RecommendationEngine {
             value.tierScore = tierScore;
             value.negativePenalty = matchup.negativePenalty + synergy.negativePenalty;
             value.secondaryRole = !targetLane.equals(candidate.tierRole) && candidate.positions.size() > 1;
+            value.knownRelations = knownMatchups + knownSynergies;
+            value.totalRelations = lineup.enemies.size() + lineup.allies.size();
             String roleNote = value.secondaryRole ? " · 多位置" : "";
             String tierLabel = candidate.tier == null || candidate.tier.isBlank()
                 ? String.valueOf(tierScore)

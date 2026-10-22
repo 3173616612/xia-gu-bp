@@ -1,19 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.XiaGuBP" parent="android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:fontFamily">sans</item>
+    <!-- Dark-only app. Framework widgets (EditText, scrollbars, dialogs) follow the dark Material base. -->
+    <style name="Theme.XiaGuBP" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/night</item>
+        <item name="android:colorBackground">@color/night</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">@color/background</item>
-        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:statusBarColor">@color/night</item>
+        <item name="android:navigationBarColor">@color/night</item>
         <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:colorAccent">@color/cyan</item>
+        <item name="android:colorAccent">@color/crown</item>
+        <item name="android:colorPrimary">@color/deck</item>
+        <item name="android:colorPrimaryDark">@color/night</item>
+        <item name="android:colorControlNormal">@color/mist</item>
+        <item name="android:colorControlActivated">@color/crown</item>
+        <item name="android:colorControlHighlight">@color/ripple_light</item>
+        <item name="android:textColorPrimary">@color/frost</item>
+        <item name="android:textColorSecondary">@color/mist</item>
+        <item name="android:textColorHint">@color/dusk</item>
+        <item name="android:textColorHighlight">@color/crown_line</item>
+        <item name="android:buttonStyle">@style/Widget.XiaGu.Button</item>
+        <item name="android:alertDialogTheme">@style/Theme.XiaGuBP.Dialog</item>
     </style>
-    <style name="Theme.XiaGuBP.Analysis" parent="android:style/Theme.Material.NoActionBar">
-        <item name="android:fontFamily">sans</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">@color/background</item>
-        <item name="android:navigationBarColor">@color/background</item>
-        <item name="android:colorAccent">@color/cyan</item>
-        <item name="android:windowBackground">@color/background</item>
+
+    <style name="Theme.XiaGuBP.Analysis" parent="Theme.XiaGuBP" />
+
+    <!-- Centered dialog: donation QR, evidence details, lane correction. -->
+    <style name="Theme.XiaGuBP.Dialog" parent="android:style/Theme.Material.Dialog.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.74</item>
+        <item name="android:colorAccent">@color/crown</item>
+        <item name="android:colorControlActivated">@color/crown</item>
+        <item name="android:colorControlHighlight">@color/ripple_light</item>
+        <item name="android:textColorPrimary">@color/frost</item>
+        <item name="android:textColorSecondary">@color/mist</item>
+        <item name="android:textColorHint">@color/dusk</item>
+        <item name="android:buttonStyle">@style/Widget.XiaGu.Button</item>
+    </style>
+
+    <!-- Bottom sheet: hero picker. -->
+    <style name="Theme.XiaGuBP.Sheet" parent="Theme.XiaGuBP.Dialog">
+        <item name="android:windowAnimationStyle">@style/Animation.XiaGuBP.Sheet</item>
+        <item name="android:backgroundDimAmount">0.72</item>
+        <item name="android:windowSoftInputMode">adjustResize|stateHidden</item>
+    </style>
+
+    <style name="Animation.XiaGuBP.Sheet" parent="android:style/Animation">
+        <item name="android:windowEnterAnimation">@anim/sheet_enter</item>
+        <item name="android:windowExitAnimation">@anim/sheet_exit</item>
     </style>
 </resources>

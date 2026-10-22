@@ -1,49 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/mainRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_screen"
-    android:fitsSystemWindows="true"
+    android:background="@color/night"
     android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="72dp"
+        android:layout_height="56dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="18dp">
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp">
 
         <ImageView
-            android:layout_width="46dp"
-            android:layout_height="46dp"
-            android:contentDescription="@string/app_name"
+            android:id="@+id/mainLogo"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@drawable/bg_logo"
+            android:importantForAccessibility="no"
             android:scaleType="centerCrop"
-            android:src="@drawable/app_icon" />
+            android:src="@drawable/logo_mark" />
 
-        <LinearLayout
+        <TextView
+            style="@style/Text.Title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="10dp"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:accessibilityHeading="true"
+            android:text="@string/app_name" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="峡谷 BP"
-                android:textColor="@color/ink"
-                android:textSize="19sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/dataStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="实时数据 · 正在准备"
-                android:textColor="@color/cyan"
-                android:textSize="11sp" />
-        </LinearLayout>
+        <TextView
+            android:id="@+id/dataStatus"
+            style="@style/Text.Caption"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:accessibilityLiveRegion="polite"
+            android:background="@drawable/bg_status_chip"
+            android:drawablePadding="6dp"
+            android:gravity="center_vertical"
+            android:maxLines="1"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:text="正在准备数据" />
     </LinearLayout>
 
     <ScrollView
@@ -52,404 +53,366 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:fillViewport="true"
-        android:scrollbarStyle="outsideOverlay">
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingStart="16dp"
-            android:paddingTop="12dp"
+            android:paddingTop="8dp"
             android:paddingEnd="16dp"
-            android:paddingBottom="30dp">
+            android:paddingBottom="24dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:letterSpacing="0.12"
-                android:text="巅峰千强选将助手"
-                android:textColor="@color/blue"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-
-            <TextView
+            <!-- The one prominent surface: everything needed to start the floating assistant. -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:lineSpacingExtra="2dp"
-                android:text="看阵容，选英雄。\n悬浮推荐一步到位。"
-                android:textColor="@color/ink"
-                android:textSize="31sp"
-                android:textStyle="bold" />
+                android:background="@drawable/bg_surface"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-            <TextView
+                <TextView
+                    style="@style/Text.Display"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:accessibilityHeading="true"
+                    android:text="悬浮识别" />
+
+                <TextView
+                    style="@style/Text.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="在游戏选将界面点悬浮球，识别双方已选英雄和 BAN 位，直接给出补位推荐。"
+                    android:textColor="@color/mist"
+                    android:textSize="13sp" />
+
+                <com.xiagu.bp.DraftScreenDiagram
+                    android:id="@+id/draftDiagram"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/teamSideLabel"
+                        style="@style/Text.Label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="我方在屏幕" />
+
+                    <RadioGroup
+                        android:id="@+id/teamSideGroup"
+                        android:layout_width="156dp"
+                        android:layout_height="42dp"
+                        android:background="@drawable/bg_segment_group"
+                        android:contentDescription="我方在屏幕哪一侧"
+                        android:orientation="horizontal"
+                        android:padding="3dp">
+
+                        <RadioButton
+                            android:id="@+id/teamLeft"
+                            style="@style/Widget.XiaGu.Segment"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:text="左侧" />
+
+                        <RadioButton
+                            android:id="@+id/teamRight"
+                            style="@style/Widget.XiaGu.Segment"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_marginStart="2dp"
+                            android:layout_weight="1"
+                            android:text="右侧" />
+                    </RadioGroup>
+                </LinearLayout>
+
+                <TextView
+                    style="@style/Text.Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="我要补的位置" />
+
+                <RadioGroup
+                    android:id="@+id/laneGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_segment_group"
+                    android:contentDescription="待补位置"
+                    android:orientation="horizontal"
+                    android:padding="3dp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="16dp"
+                    android:background="@color/seam" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="56dp"
+                    android:orientation="horizontal"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
+
+                    <ImageView
+                        android:id="@+id/overlayPermissionIcon"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_alert_circle" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="显示在其他应用上层" />
+
+                        <TextView
+                            android:id="@+id/overlayPermissionStatus"
+                            style="@style/Text.Caption"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="未允许，悬浮窗需要这项权限" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/grantOverlayButton"
+                        style="@style/Widget.XiaGu.Button.Small.GoldLine"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="8dp"
+                        android:text="去开启" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/seam" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="56dp"
+                    android:orientation="horizontal"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
+
+                    <ImageView
+                        android:id="@+id/capturePermissionIcon"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_info_circle" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="屏幕录制" />
+
+                        <TextView
+                            android:id="@+id/capturePermissionStatus"
+                            style="@style/Text.Caption"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="启动时由系统询问，每次只截取一帧，在本机识别" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/seam" />
+
+                <Button
+                    android:id="@+id/startAssistantButton"
+                    style="@style/Widget.XiaGu.Button.Primary"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="16dp"
+                    android:enabled="false"
+                    android:text="正在准备头像库…" />
+
+                <TextView
+                    android:id="@+id/mainStatus"
+                    style="@style/Text.Caption"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:accessibilityLiveRegion="polite"
+                    android:text="启动后切回游戏，在选将界面点 BP 悬浮球。" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/manualBpButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:lineSpacingExtra="4dp"
-                android:text="启动助手后切回游戏，点击悬浮 BP，即可识别双方阵容与 BAN 位并获得补位推荐。"
-                android:textColor="@color/muted"
-                android:textSize="14sp" />
+                android:background="@drawable/bg_surface_pressable"
+                android:clickable="true"
+                android:contentDescription="手动 BP。不方便截图时，手动录入双方阵容生成推荐"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="14dp">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
-                android:baselineAligned="false"
-                android:orientation="horizontal">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="78dp"
-                    android:layout_marginEnd="5dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_step"
-                    android:gravity="center_vertical"
-                    android:orientation="vertical"
-                    android:padding="11dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="01"
-                        android:textColor="@color/cyan"
-                        android:textSize="11sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="完成授权"
-                        android:textColor="@color/ink"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
+                <ImageView
+                    android:id="@+id/manualBpIcon"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_icon_tile"
+                    android:importantForAccessibility="no"
+                    android:scaleType="center"
+                    android:src="@drawable/ic_board" />
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="78dp"
-                    android:layout_marginHorizontal="5dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_step"
-                    android:gravity="center_vertical"
-                    android:orientation="vertical"
-                    android:padding="11dp">
+                    android:importantForAccessibility="noHideDescendants"
+                    android:orientation="vertical">
 
                     <TextView
+                        style="@style/Text.Heading"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="02"
-                        android:textColor="@color/cyan"
-                        android:textSize="11sp"
-                        android:textStyle="bold" />
+                        android:text="手动 BP"
+                        android:textSize="15sp" />
 
                     <TextView
+                        style="@style/Text.Caption"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="选择分路"
-                        android:textColor="@color/ink"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
+                        android:layout_marginTop="3dp"
+                        android:text="不方便截图时，手动录入双方阵容生成推荐" />
                 </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="78dp"
-                    android:layout_marginStart="5dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_step"
-                    android:gravity="center_vertical"
-                    android:orientation="vertical"
-                    android:padding="11dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="03"
-                        android:textColor="@color/cyan"
-                        android:textSize="11sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="点击识别"
-                        android:textColor="@color/ink"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_chevron_right" />
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/bg_card"
-                android:orientation="vertical"
-                android:padding="18dp">
+                android:layout_marginTop="20dp"
+                android:orientation="vertical">
 
-                <TextView
+                <LinearLayout
+                    android:id="@+id/sourceLink"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="首次使用授权"
-                    android:textColor="@color/ink"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="用于在游戏上方显示推荐结果，并读取当前屏幕。"
-                    android:textColor="@color/muted_2"
-                    android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/overlayPermissionStatus"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="悬浮窗权限 · 未授权"
-                    android:textColor="@color/warning"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <Button
-                    android:id="@+id/grantOverlayButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="9dp"
-                    android:background="@drawable/bg_outline"
-                    android:text="授权显示在其他应用上层"
-                    android:textAllCaps="false"
-                    android:textColor="@color/ink"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/capturePermissionStatus"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="屏幕识别权限 · 启动时确认"
-                    android:textColor="@color/muted"
-                    android:textSize="13sp" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:background="@drawable/bg_card"
-                android:orientation="vertical"
-                android:padding="18dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="识别设置"
-                    android:textColor="@color/ink"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="我的阵容位于"
-                    android:textColor="@color/muted"
-                    android:textSize="12sp" />
-
-                <RadioGroup
-                    android:id="@+id/teamSideGroup"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_row_pressable"
+                    android:clickable="true"
+                    android:contentDescription="数据来源：天元之弈 tianyuanzhiyi.com，点按打开网站"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="40dp"
                     android:orientation="horizontal">
 
-                    <RadioButton
-                        android:id="@+id/teamLeft"
-                        android:layout_width="0dp"
-                        android:layout_height="44dp"
-                        android:layout_marginEnd="6dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_chip"
-                        android:button="@null"
-                        android:checked="true"
-                        android:gravity="center"
-                        android:text="屏幕左侧"
-                        android:textColor="@color/ink" />
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="64dp"
+                        android:layout_height="wrap_content"
+                        android:text="数据来源"
+                        android:textColor="@color/dusk" />
 
-                    <RadioButton
-                        android:id="@+id/teamRight"
-                        android:layout_width="0dp"
-                        android:layout_height="44dp"
-                        android:layout_marginStart="6dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_chip"
-                        android:button="@null"
-                        android:gravity="center"
-                        android:text="屏幕右侧"
-                        android:textColor="@color/ink" />
-                </RadioGroup>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="18dp"
-                    android:text="待补位置（悬浮窗内也可切换）"
-                    android:textColor="@color/muted"
-                    android:textSize="12sp" />
-
-                <HorizontalScrollView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:scrollbars="none">
-
-                    <RadioGroup
-                        android:id="@+id/laneGroup"
+                    <TextView
+                        android:id="@+id/sourceLinkText"
+                        style="@style/Text"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal" />
-                </HorizontalScrollView>
+                        android:text="天元之弈 tianyuanzhiyi.com"
+                        android:textSize="13sp" />
+                </LinearLayout>
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:lineSpacingExtra="2dp"
-                    android:text="多位置英雄和非常规阵容会按当前识别结果计算推荐。"
-                    android:textColor="@color/cyan"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:background="@drawable/bg_card"
-                android:orientation="vertical"
-                android:padding="18dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="手动自选阵容"
-                    android:textColor="@color/ink"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:lineSpacingExtra="2dp"
-                    android:text="不方便截图时，可手动录入我方、敌方与 BAN 位，再按分路生成推荐。"
-                    android:textColor="@color/muted_2"
-                    android:textSize="12sp" />
-
-                <Button
-                    android:id="@+id/manualBpButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:layout_marginTop="14dp"
-                    android:background="@drawable/bg_outline"
-                    android:text="打开手动 BP"
-                    android:textAllCaps="false"
-                    android:textColor="@color/ink"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <Button
-                android:id="@+id/startAssistantButton"
-                android:layout_width="match_parent"
-                android:layout_height="58dp"
-                android:layout_marginTop="18dp"
-                android:background="@drawable/bg_primary"
-                android:text="启动悬浮助手"
-                android:textAllCaps="false"
-                android:textColor="@color/ink"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/mainStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:lineSpacingExtra="2dp"
-                android:padding="12dp"
-                android:text="启动后切回游戏，点击悬浮 BP 按钮即可识别。"
-                android:textColor="@color/muted"
-                android:textSize="12sp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:background="@drawable/bg_footer"
-                android:orientation="vertical"
-                android:padding="18dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:letterSpacing="0.08"
-                    android:text="关于"
-                    android:textColor="@color/muted_2"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/sourceLink"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:background="?android:attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:paddingVertical="6dp"
-                    android:text="数据来源 · 天元之弈  tianyuanzhiyi.com"
-                    android:textColor="@color/cyan"
-                    android:textSize="13sp" />
-
-                <TextView
+                <LinearLayout
                     android:id="@+id/authorLink"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackground"
+                    android:background="@drawable/bg_row_pressable"
                     android:clickable="true"
+                    android:contentDescription="作者邮箱 3173616612@qq.com，点按发送邮件"
                     android:focusable="true"
-                    android:paddingVertical="6dp"
-                    android:text="创意及作者 · 3173616612@qq.com"
-                    android:textColor="@color/ink"
-                    android:textSize="13sp" />
+                    android:gravity="center_vertical"
+                    android:minHeight="40dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="64dp"
+                        android:layout_height="wrap_content"
+                        android:text="作者"
+                        android:textColor="@color/dusk" />
+
+                    <TextView
+                        android:id="@+id/authorLinkText"
+                        style="@style/Text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="3173616612@qq.com"
+                        android:textSize="13sp" />
+                </LinearLayout>
 
                 <Button
                     android:id="@+id/donateButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="50dp"
+                    style="@style/Widget.XiaGu.Button.Small.GoldLine"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
                     android:layout_marginTop="12dp"
-                    android:background="@drawable/bg_donation"
-                    android:text="觉得好用，就赞赏一下"
-                    android:textAllCaps="false"
-                    android:textColor="@color/gold"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:text="觉得好用，赞赏一下" />
 
                 <TextView
+                    style="@style/Text.Micro"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:gravity="center"
-                    android:text="个人工具 · 非官方应用"
-                    android:textColor="@color/muted_2"
-                    android:textSize="10sp" />
+                    android:layout_marginTop="14dp"
+                    android:text="个人作品，非腾讯游戏或天美工作室官方应用。推荐仅供 BP 参考。" />
+
+                <TextView
+                    android:id="@+id/versionText"
+                    style="@style/Text.Micro"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

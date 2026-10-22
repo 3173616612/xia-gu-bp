@@ -29,7 +29,7 @@ try {
 
 $sourceApk = Join-Path $androidRoot "app\build\outputs\apk\release\app-release.apk"
 $outputDir = Join-Path $workspaceRoot "output"
-$outputApk = Join-Path $outputDir "xia-gu-bp-polished-secure-v1.8.apk"
+$outputApk = Join-Path $outputDir "xia-gu-bp-new-ui-v1.9.0.apk"
 New-Item -ItemType Directory -Force $outputDir | Out-Null
 Copy-Item -LiteralPath $sourceApk -Destination $outputApk -Force
 Write-Host "APK: $outputApk"
