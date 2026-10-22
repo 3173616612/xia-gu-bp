@@ -33,13 +33,15 @@ npm run build
 
 原生 APK 同时支持手动自选阵容与悬浮识别。手动 BP 按网页选将风格重做：我方在左、敌方在右，五条分路逐行对应；英雄池带真实头像、搜索、分路筛选和梯度标识，并支持 BAN、跳过候选和直接加入阵容。悬浮模式继续用本地英雄头像匹配识别两侧已选阵容与顶部 BAN 位。推荐算法内置，英雄、梯度和四类关系直接读取天元之弈国内接口，不依赖公开站点；头像库随原始接口的 `avatarUrl` 指纹增量更新。构建、隐私和非标准阵容说明见 [`android/README.md`](android/README.md)。
 
-![峡谷 BP Android 主界面](docs/design-qa/xiagu-main-final.png)
+![峡谷 BP 1.9.0 主界面](docs/design-qa/v1.9.0-main.png)
 
-![手动 BP 左右分列选将](docs/design-qa/manual-bp-android.png)
+![手动 BP 左右分列选将](docs/design-qa/v1.9.0-manual.png)
 
-![手动 BP 英雄头像选择器](docs/design-qa/manual-picker-android.png)
+![手动 BP 英雄头像选择器](docs/design-qa/v1.9.0-picker.png)
 
-最新版为 **v1.8.0**，支持 Android 8.0 及以上，可覆盖安装 1.7.0。[下载 1.8.0 安装包](https://github.com/3173616612/xia-gu-bp/releases/tag/v1.8.0)，发布页同时提供 SHA-256 校验文件。本地构建产物位于 `output/xia-gu-bp-polished-secure-v1.8.apk`。
+最新版为 **v1.9.0**，支持 Android 8.0 及以上，可覆盖安装 1.8.0。[下载 1.9.0 安装包](https://github.com/3173616612/xia-gu-bp/releases/tag/v1.9.0)，发布页同时提供 SHA-256 校验文件。本地构建产物位于 `output/xia-gu-bp-new-ui-v1.9.0.apk`。
+
+1.9.0 更新主页、手动选将、推荐卡、阵容对位和悬浮面板，新增拼音／首字母搜索，阵容变化后自动更新推荐；修复展开悬浮窗旋转屏幕后底部按钮不可见的问题。沿用原正式签名，验证记录见 [`android/QA-1.9.0.md`](android/QA-1.9.0.md)。
 
 1.8.0 新增识别后阵容对位页：五路、全阵容交叉矩阵，以及中野／中辅／边野／射辅组合分析；允许校正分路和补录英雄，缺失证据不视为均势。同步优化了小样本关系计分、BAN 整行拟合、左右独立边距和 4:3 至超宽横屏比例适配。验证范围与限制见 [`android/QA-1.8.0.md`](android/QA-1.8.0.md)；英文 QA 案例见 [`docs/qa-case-study-en.md`](docs/qa-case-study-en.md)。
 
